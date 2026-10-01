@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Presensi Tamu VIP & VVIP</title>
+    <!-- Tailwind CSS (Desain Modern) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library Kamera Scanner QR Code -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Library Ikon Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK (Untuk Sinkronisasi Real-Time Multi-HP Panitia) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12 font-sans">
+
+    <!-- Header Navbar -->
+    <header class="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white sticky top-0 z-40 shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-black">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-emerald-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-extrabold tracking-tight">Presensi Tamu VIP & VVIP</h1>
+                    <p class="text-[11px] text-emerald-200" id="sync-status-indicator">● Sinkron Live ke Google Sheets & Cloud</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Tombol Tambah Tamu Manual -->
+                <button onclick="openAddGuestModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span>+ Tambah Tamu</span>
+                </button>
+                <button onclick="fetchOnlineSheets()" id="btn-refresh" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/20 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">Refresh Sheets</span>
+                </button>
+                <button onclick="openScanner()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-lg text-xs font-black shadow transition">
+                    <i data-lucide="camera" class="w-4 h-4"></i>
+                    <span>Scan Kartu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 mt-5">
+
+        <!-- Baris Download CSV untuk Canva Bulk Create -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div class="flex items-center gap-2.5">
+                <i data-lucide="download-cloud" class="w-5 h-5 text-emerald-700"></i>
+                <div>
+                    <h4 class="text-xs font-extrabold text-emerald-900">Download Data Siap Cetak untuk Canva (Bulk Create)</h4>
+                    <p class="text-[11px] text-emerald-700">File CSV sudah rapi (500 slot VIP & 50 slot VVIP lengkap dengan kode QR-nya)</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="downloadCanvaCSV('VIP')" class="px-3.5 py-2 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition shadow-sm">
+                    Unduh CSV VIP (500)
+                </button>
+                <button onclick="downloadCanvaCSV('VVIP')" class="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                    Unduh CSV VVIP (50)
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Ringkasan Statistik -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 font-bold">Total Terdata</span>
+                <p id="stat-terisi" class="text-2xl font-black text-slate-800 mt-0.5">0</p>
+                <p class="text-[11px] text-slate-400 mt-1" id="sub-terisi">500 VIP • 50 VVIP</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
+                <span class="text-xs text-slate-500 font-bold">Sudah Hadir (Scan)</span>
+                <p id="stat-hadir" class="text-2xl font-black text-emerald-600 mt-0.5">0</p>
+                <div class="flex gap-2 text-[10px] text-emerald-700 font-bold mt-1">
+                    <span id="stat-hadir-vip">VIP: 0</span> • <span id="stat-hadir-vvip">VVIP: 0</span>
+                </div>
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
+                <span class="text-xs text-slate-500 font-bold">Belum Hadir</span>
+                <p id="stat-belum" class="text-2xl font-black text-amber-600 mt-0.5">0</p>
+                <p class="text-[10px] text-slate-400 mt-1">Menunggu kedatangan</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
+                <span class="text-xs text-slate-500 font-bold">Asal Majelis</span>
+                <div class="text-xs font-black text-slate-700 mt-1 flex justify-between">
+                    <span id="stat-mtnh">MTNH: 0</span>
+                    <span id="stat-mtql">MTQL: 0</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">Sebaran kedua majelis</p>
+            </div>
+        </div>
+
+        <!-- 3 Tombol Utama Sesuai Permintaan -->
+        <div class="flex flex-wrap items-center gap-2 mb-4 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm">
+            <!-- Tombol 1: Total Tamu Undangan -->
+            <button id="btn-tab-all" onclick="changeTab('all')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-white shadow">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span>1. Total Tamu Undangan</span>
+            </button>
+
+            <!-- Tombol 2: Tamu Sudah Discan (Hadir) -->
+            <button id="btn-tab-attended" onclick="changeTab('attended')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <i data-lucide="user-check" class="w-4 h-4 text-emerald-600"></i>
+                <span>2. Sudah Discan (Hadir)</span>
+            </button>
+
+            <!-- Tombol 3: Filter Kategori & Majelis -->
+            <button id="btn-tab-filter" onclick="changeTab('filter')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4 text-blue-600"></i>
+                <span>3. Filter Majelis & Kategori</span>
+            </button>
+
+            <!-- Opsi Sembunyikan Slot Kosong -->
+            <label class="flex items-center gap-1.5 text-xs text-slate-600 font-medium ml-2 cursor-pointer select-none">
+                <input type="checkbox" id="chk-hide-empty" onchange="renderCards()" checked class="rounded text-emerald-600 focus:ring-0">
+                <span>Hanya yang terisi</span>
+            </label>
+
+            <!-- Search Bar Cepat -->
+            <div class="ml-auto w-full sm:w-64 mt-2 sm:mt-0 relative">
+                <input type="text" id="input-search" oninput="renderCards()" placeholder="Cari nama / no. kursi..." class="w-full text-xs py-2 pl-8 pr-3 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+            </div>
+        </div>
+
+        <!-- Panel Filter Tambahan (Aktif pada Tombol 3) -->
+        <div id="filter-box" class="hidden mb-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i data-lucide="filter" class="w-3.5 h-3.5 text-emerald-600"></i> Pengaturan Filter
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Tingkatan Kategori</label>
+                    <select id="filter-cat" onchange="renderCards()" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                        <option value="">Semua Kategori (VIP & VVIP)</option>
+                        <option value="VVIP">VVIP Saja (50 Slot)</option>
+                        <option value="VIP">VIP Saja (500 Slot)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Kelompok Asal Majelis</label>
+                    <select id="filter-maj" onchange="renderCards()" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                        <option value="">Semua Majelis</option>
+                        <option value="MTNH">Majelis MTNH Saja</option>
+                        <option value="MTQL">Majelis MTQL Saja</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wadah Kartu Tamu -->
+        <div id="cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+        <div id="empty-state" class="hidden py-16 text-center text-slate-400">
+            <i data-lucide="user-x" class="w-12 h-12 mx-auto mb-2 opacity-30"></i>
+            <p class="text-xs font-medium">Data tamu tidak ditemukan.</p>
+        </div>
+    </main>
+
+    <!-- MODAL POPUP TAMBAH TAMU MANUAL (ANTI DUPLIKAT KURSI) -->
+    <div id="add-guest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 text-left shadow-2xl relative border border-slate-100">
+            <button onclick="closeAddGuestModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-5 h-5 text-emerald-600"></i>
+                <span id="modal-form-title">Input Tamu Undangan Baru</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">Data otomatis ditambahkan ke Google Spreadsheet dan siap discan.</p>
+
+            <form onsubmit="saveManualGuest(event)" class="mt-4 space-y-3.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Undangan</label>
+                        <select id="form-cat" onchange="populateAvailableSlotDropdown()" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none font-bold">
+                            <option value="VIP" selected>VIP (500 Slot)</option>
+                            <option value="VVIP">VVIP (50 Slot)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Nomor Kursi Berikutnya</label>
+                        <select id="form-nomor" required class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none font-bold bg-slate-50 text-emerald-800">
+                            <!-- Otomatis Hanya Memilih Slot Kosong Terdekat -->
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Lengkap Tamu <span class="text-rose-500">*</span></label>
+                    <input type="text" id="form-nama-lengkap" required placeholder="Contoh: Hj. Fatimah Azzahra" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Panggilan</label>
+                        <input type="text" id="form-nama-panggilan" placeholder="Contoh: Umi Imah" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Asal Majelis <span class="text-rose-500">*</span></label>
+                        <select id="form-majelis" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none font-bold">
+                            <option value="MTQL">Majelis MTQL</option>
+                            <option value="MTNH">Majelis MTNH</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Link Foto Wajah (Google Drive / URL)</label>
+                    <input type="text" id="form-photo-url" placeholder="https://drive.google.com/file/d/..." class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                </div>
+
+                <div class="pt-3 flex gap-2">
+                    <button type="button" onclick="closeAddGuestModal()" class="w-1/2 py-2.5 border border-slate-300 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition">
+                        Batal
+                    </button>
+                    <button type="submit" id="btn-submit-guest" class="w-1/2 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Simpan ke Sheets</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Scanner Kamera HP Panitia -->
+    <div id="scanner-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-center shadow-2xl relative">
+            <button onclick="closeScanner()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h3 class="text-sm font-black text-slate-800 mb-1">Arahkan Kamera ke Kartu Tamu</h3>
+            <p class="text-[11px] text-slate-500 mb-3">Sistem otomatis mencocokkan wajah & data kehadiran</p>
+            
+            <div id="camera-reader-box" class="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black min-h-[240px]"></div>
+
+            <div class="mt-4 flex gap-2">
+                <input type="text" id="manual-code-input" placeholder="Input manual (cth: VIP-1)" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                <button onclick="submitScan(document.getElementById('manual-code-input').value)" class="bg-emerald-800 text-white text-xs px-4 rounded-xl font-bold">Kirim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pop-Up Hasil Scan -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative border border-slate-100">
+            
+            <div id="res-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-3">
+                <span id="res-msg">Presensi Terverifikasi</span>
+            </div>
+
+            <div class="relative w-36 h-36 mx-auto mb-3">
+                <img id="res-photo" src="" alt="Foto Tamu" referrerpolicy="no-referrer" class="w-36 h-36 rounded-full object-cover border-4 border-emerald-500 shadow-xl mx-auto">
+                <div id="res-avatar" class="w-36 h-36 rounded-full bg-slate-800 text-white text-4xl font-black flex items-center justify-center border-4 border-white shadow-xl mx-auto hidden">
+                    AB
+                </div>
+            </div>
+
+            <h2 id="res-nama-lengkap" class="text-lg font-black text-slate-900 leading-tight">Nama Lengkap</h2>
+            <p id="res-nama-panggilan" class="text-xs text-slate-500 font-medium mt-0.5">Panggilan: -</p>
+            
+            <div class="flex items-center justify-center gap-2 mt-2.5">
+                <span id="res-cat" class="px-2.5 py-0.5 rounded text-[11px] font-black bg-amber-100 text-amber-900">VIP</span>
+                <span class="text-slate-300">•</span>
+                <span id="res-no" class="text-xs font-bold text-slate-600">Nomor: #1</span>
+                <span class="text-slate-300">•</span>
+                <span id="res-maj" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-900">MTNH</span>
+            </div>
+
+            <p id="res-time" class="text-[11px] text-slate-400 font-mono mt-3">Waktu Scan: -</p>
+
+            <button onclick="closeResultModal()" class="w-full mt-5 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-lg">
+                Tutup & Lanjut Scan Berikutnya
+            </button>
+
+            <button id="btn-modal-cancel" onclick="cancelAttendanceFromModal()" class="w-full mt-2 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-rose-200">
+                <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                <span>Batalkan Status Hadir Tamu Ini</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Script Logika Aplikasi -->
+    <script>
+        // =========================================================================
+        // KONFIGURASI DATABASE
+        // =========================================================================
+        const SHEET_ID_VIP = "1-jgBw-gWk-451E_1mCoeqYjV6-2d-N_90efBnDUwSK4";
+        const SHEET_ID_VVIP = "1R9tuXxyrY7lH90j2LivV-v1zrdhgwtKRSQOxMq-RIx8";
+
+        // URL GOOGLE APPS SCRIPT ANDA (TEMPEL LINK DARI LANGKAH 1 DI SINI):
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7dQ5USLKHN0TIhXZyIJQsB7ZyWoTwskBFhmVMfSahoLQuu4cy6Rohlkr1IHPGNbu3/exec"; 
+
+        const TOTAL_SLOT_VIP = 500;
+        const TOTAL_SLOT_VVIP = 50;
+
+        // Firebase Realtime Database
+        const firebaseConfig = {
+            databaseURL: "https://presensi-tamu-maulid-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        let dbRef = null;
+        let isFirebaseActive = false;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            dbRef = firebase.database();
+            isFirebaseActive = true;
+        } catch(e) {
+            console.warn("Firebase offline.", e);
+        }
+
+        let allGuests = [];
+        let currentTab = 'all';
+        let qrScanner = null;
+        let activeScannedGuest = null;
+
+        function convertDriveUrl(driveUrl) {
+            if (!driveUrl || typeof driveUrl !== 'string') return '';
+            const match = driveUrl.match(/(?:id=|\/d\/|file\/d\/)([a-zA-Z0-9_-]{20,})/);
+            if (match && match[1]) {
+                return `https://lh3.googleusercontent.com/d/${match[1]}=s500`;
+            }
+            return driveUrl.trim();
+        }
+
+        // ==========================================
+        // KEHADIRAN (ATTENDANCE)
+        // ==========================================
+        function getAttendanceMap() {
+            try { return JSON.parse(localStorage.getItem('kehadiran_tamu_majelis')) || {}; } catch(e) { return {}; }
+        }
+
+        function markGuestAttended(guestId) {
+            const map = getAttendanceMap();
+            const now = new Date();
+            const timeStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            const isFirst = !map[guestId];
+            if (isFirst) {
+                map[guestId] = timeStr;
+                localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(map));
+                if (isFirebaseActive) {
+                    dbRef.ref(`attendance/${guestId}`).set(timeStr);
+                }
+            }
+            return { isFirst, time: map[guestId] };
+        }
+
+        function cancelAttendance(guestId, guestName) {
+            const konfirmasi = confirm(`Batalkan status hadir untuk tamu:\n"${guestName}" (${guestId})?\n\nStatus akan kembali menjadi 'Belum Hadir'.`);
+            if (!konfirmasi) return;
+
+            const map = getAttendanceMap();
+            if (map[guestId]) {
+                delete map[guestId];
+                localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(map));
+                if (isFirebaseActive) {
+                    dbRef.ref(`attendance/${guestId}`).remove();
+                }
+            }
+
+            const guest = allGuests.find(g => g.id === guestId);
+            if (guest) {
+                guest.is_attended = false;
+                guest.attended_at = null;
+            }
+
+            updateStats();
+            renderCards();
+            closeResultModal();
+        }
+
+        function cancelAttendanceFromModal() {
+            if (!activeScannedGuest) return;
+            cancelAttendance(activeScannedGuest.id, activeScannedGuest.nama_lengkap);
+        }
+
+        function markAttendanceManual(guestId, guestName) {
+            const konfirmasi = confirm(`Tandai tamu ini sebagai HADIR secara manual?\n"${guestName}" (${guestId})`);
+            if (!konfirmasi) return;
+
+            const { time } = markGuestAttended(guestId);
+            const guest = allGuests.find(g => g.id === guestId);
+            if (guest) {
+                guest.is_attended = true;
+                guest.attended_at = time;
+            }
+
+            updateStats();
+            renderCards();
+        }
+
+        // ==========================================
+        // FITUR TAMBAH / HAPUS TERHUBUNG SPREADSHEET
+        // ==========================================
+        function populateAvailableSlotDropdown() {
+            const cat = document.getElementById('form-cat').value;
+            const selectNomor = document.getElementById('form-nomor');
+            selectNomor.innerHTML = '';
+
+            const total = cat === 'VIP' ? TOTAL_SLOT_VIP : TOTAL_SLOT_VVIP;
+            let firstEmptySlot = null;
+
+            for (let i = 1; i <= total; i++) {
+                const guest = allGuests.find(g => g.category === cat && g.nomor_tamu === i);
+                if (guest && guest.is_empty) {
+                    firstEmptySlot = i;
+                    break;
+                }
+            }
+
+            if (firstEmptySlot) {
+                const opt = document.createElement('option');
+                opt.value = firstEmptySlot;
+                opt.innerText = `Kursi #${firstEmptySlot} (Urutan Berikutnya)`;
+                opt.selected = true;
+                selectNomor.appendChild(opt);
+            } else {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.innerText = "Semua kursi penuh!";
+                opt.disabled = true;
+                selectNomor.appendChild(opt);
+            }
+        }
+
+        function openAddGuestModal(cat = 'VIP') {
+            document.getElementById('form-cat').value = cat;
+            document.getElementById('form-nama-lengkap').value = '';
+            document.getElementById('form-nama-panggilan').value = '';
+            document.getElementById('form-majelis').value = 'MTQL';
+            document.getElementById('form-photo-url').value = '';
+
+            populateAvailableSlotDropdown();
+            document.getElementById('add-guest-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeAddGuestModal() {
+            document.getElementById('add-guest-modal').classList.add('hidden');
+        }
+
+        async function saveManualGuest(e) {
+            e.preventDefault();
+            const cat = document.getElementById('form-cat').value;
+            const nomor = document.getElementById('form-nomor').value;
+            const namaLengkap = document.getElementById('form-nama-lengkap').value.trim();
+            const namaPanggilan = document.getElementById('form-nama-panggilan').value.trim() || '-';
+            const majelis = document.getElementById('form-majelis').value;
+            const photoRaw = document.getElementById('form-photo-url').value.trim();
+
+            if (!APPS_SCRIPT_URL) {
+                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan (baris 229).\n\nSilakan masukkan URL Apps Script agar data baru ini otomatis tertulis ke baris Google Spreadsheet!");
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit-guest');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Menyimpan...`;
+            lucide.createIcons();
+
+            try {
+                const url = `${APPS_SCRIPT_URL}?action=add&category=${cat}&nama=${encodeURIComponent(namaLengkap)}&panggilan=${encodeURIComponent(namaPanggilan)}&majelis=${majelis}&photo=${encodeURIComponent(photoRaw)}&_=${Date.now()}`;
+                await fetch(url, { mode: 'no-cors' });
+
+                closeAddGuestModal();
+                alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMemuat ulang data terbaru...`);
+                
+                // Refresh data langsung dari sheets
+                setTimeout(() => { fetchOnlineSheets(); }, 1200);
+            } catch (err) {
+                alert("Gagal menghubungi Google Apps Script: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span>Simpan ke Sheets</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        async function deleteGuestFromView(guestId, guestName, nomor, category) {
+            const konfirmasi = confirm(`Hapus tamu:\n"${guestName}" (${guestId})?\n\nData ini akan langsung dihapus dari Google Spreadsheet.`);
+            if (!konfirmasi) return;
+
+            if (!APPS_SCRIPT_URL) {
+                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.\n\nUntuk menghapus tamu langsung dari web ke Google Spreadsheet, silakan pasang URL Apps Script terlebih dahulu.");
+                return;
+            }
+
+            try {
+                // Hapus juga status hadir jika ada
+                const attMap = getAttendanceMap();
+                if (attMap[guestId]) {
+                    delete attMap[guestId];
+                    localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(attMap));
+                    if (isFirebaseActive) dbRef.ref(`attendance/${guestId}`).remove();
+                }
+
+                const url = `${APPS_SCRIPT_URL}?action=delete&category=${category}&nomor=${nomor}&nama=${encodeURIComponent(guestName)}&_=${Date.now()}`;
+                await fetch(url, { mode: 'no-cors' });
+
+                alert(`Tamu "${guestName}" telah dihapus dari Google Spreadsheet!\nMenyinkronkan data...`);
+                setTimeout(() => { fetchOnlineSheets(); }, 1200);
+            } catch (err) {
+                alert("Gagal menghapus dari Spreadsheet: " + err.message);
+            }
+        }
+
+        // =========================================================================
+        // PENARIKAN DATA LIVE DARI GOOGLE SPREADSHEET (MUTLAK SINKRON & ANTI-CACHE)
+        // =========================================================================
+        function fetchSheetJSONP(sheetId, callbackName) {
+            return new Promise((resolve) => {
+                const timeout = setTimeout(() => { resolve(null); }, 8000);
+
+                window[callbackName] = function(json) {
+                    clearTimeout(timeout);
+                    try {
+                        const table = json.table;
+                        const cols = table.cols.map(c => (c.label || '').toLowerCase());
+                        
+                        let idxNama = cols.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
+                        let idxPanggilan = cols.findIndex(c => c.includes('panggilan'));
+                        let idxMajelis = cols.findIndex(c => c.includes('majelis') || c.includes('asal'));
+                        let idxPhoto = cols.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
+
+                        let startRow = 0;
+                        if (idxNama === -1 && table.rows.length > 0) {
+                            const firstRow = table.rows[0].c.map(cell => cell ? (cell.v || '').toString().toLowerCase() : '');
+                            idxNama = firstRow.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
+                            idxPanggilan = firstRow.findIndex(c => c.includes('panggilan'));
+                            idxMajelis = firstRow.findIndex(c => c.includes('majelis') || c.includes('asal'));
+                            idxPhoto = firstRow.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
+                            if (idxNama !== -1) startRow = 1;
+                        }
+
+                        if (idxNama === -1) idxNama = 1;
+                        if (idxPanggilan === -1) idxPanggilan = 2;
+                        if (idxMajelis === -1) idxMajelis = 3;
+                        if (idxPhoto === -1) idxPhoto = 5;
+
+                        const results = [];
+                        for (let r = startRow; r < table.rows.length; r++) {
+                            const row = table.rows[r];
+                            if (!row || !row.c) continue;
+                            const getVal = (idx) => {
+                                if (idx < 0 || idx >= row.c.length || !row.c[idx]) return '';
+                                return (row.c[idx].f || row.c[idx].v || '').toString().trim();
+                            };
+                            const nama = getVal(idxNama);
+                            if (!nama || nama.toLowerCase() === 'nan' || nama.toLowerCase() === 'nama lengkap') continue;
+                            
+                            const panggilan = getVal(idxPanggilan) || '-';
+                            let majelis = getVal(idxMajelis).toUpperCase();
+                            majelis = majelis.includes('MTNH') ? 'MTNH' : 'MTQL';
+                            const photo = convertDriveUrl(getVal(idxPhoto));
+
+                            results.push({
+                                nama_lengkap: nama,
+                                nama_panggilan: panggilan,
+                                asal_majelis: majelis,
+                                photo_url: photo
+                            });
+                        }
+                        resolve(results);
+                    } catch(e) {
+                        resolve(null);
+                    } finally {
+                        delete window[callbackName];
+                        const s = document.getElementById(`script_${callbackName}`);
+                        if (s) s.remove();
+                    }
+                };
+
+                // Ditambahkan &_=${Date.now()} agar BROWSER TIDAK PERNAH MENYIMPAN CACHE LAMA
+                const script = document.createElement('script');
+                script.id = `script_${callbackName}`;
+                script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&_=${Date.now()}`;
+                script.onerror = function() {
+                    clearTimeout(timeout);
+                    delete window[callbackName];
+                    script.remove();
+                    resolve(null);
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        async function fetchOnlineSheets() {
+            const btn = document.getElementById('btn-refresh');
+            btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
+            lucide.createIcons();
+
+            // Bersihkan sisa overrides lama yang pernah tersimpan di browser agar tidak menabrak Sheets
+            localStorage.removeItem('guest_overrides_majelis');
+
+            const [vipData, vvipData] = await Promise.all([
+                fetchSheetJSONP(SHEET_ID_VIP, 'handleVIPResponse'),
+                fetchSheetJSONP(SHEET_ID_VVIP, 'handleVVIPResponse')
+            ]);
+
+            btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Refresh Sheets</span>`;
+            lucide.createIcons();
+
+            const attendance = getAttendanceMap();
+            allGuests = [];
+
+            // Membangun daftar tamu: JUMLAH DAN URUTAN 100% PERSIS DENGAN GOOGLE SPREADSHEET
+            function mapCategoryData(sheetRows, category, totalSlots) {
+                const rows = sheetRows || [];
+                const filledCount = rows.length;
+
+                for (let i = 1; i <= totalSlots; i++) {
+                    const guestId = `${category}-${i}`;
+                    const attendedTime = attendance[guestId] || null;
+
+                    if (i <= filledCount) {
+                        // Data persis dari baris Google Spreadsheet
+                        const item = rows[i - 1];
+                        allGuests.push({
+                            id: guestId,
+                            category: category,
+                            nomor_tamu: i,
+                            nama_lengkap: item.nama_lengkap,
+                            nama_panggilan: item.nama_panggilan,
+                            asal_majelis: item.asal_majelis,
+                            photo_url: item.photo_url,
+                            is_empty: false,
+                            is_attended: Boolean(attendedTime),
+                            attended_at: attendedTime
+                        });
+                    } else {
+                        // Slot Kosong (belum ada di spreadsheet)
+                        allGuests.push({
+                            id: guestId,
+                            category: category,
+                            nomor_tamu: i,
+                            nama_lengkap: `[Slot Kosong #${i}]`,
+                            nama_panggilan: '-',
+                            asal_majelis: '-',
+                            photo_url: '',
+                            is_empty: true,
+                            is_attended: false,
+                            attended_at: null
+                        });
+                    }
+                }
+            }
+
+            mapCategoryData(vvipData, 'VVIP', TOTAL_SLOT_VVIP);
+            mapCategoryData(vipData, 'VIP', TOTAL_SLOT_VIP);
+
+            updateStats();
+            renderCards();
+        }
+
+        function updateStats() {
+            const filled = allGuests.filter(g => !g.is_empty);
+            const hadir = allGuests.filter(g => g.is_attended);
+            const hadirVIP = hadir.filter(g => g.category === 'VIP').length;
+            const hadirVVIP = hadir.filter(g => g.category === 'VVIP').length;
+            const totMTNH = filled.filter(g => g.asal_majelis === 'MTNH').length;
+            const totMTQL = filled.filter(g => g.asal_majelis === 'MTQL').length;
+
+            document.getElementById('stat-terisi').innerText = filled.length;
+            document.getElementById('sub-terisi').innerText = `${allGuests.length} Total Slot Disediakan`;
+            document.getElementById('stat-hadir').innerText = hadir.length;
+            document.getElementById('stat-hadir-vip').innerText = `VIP: ${hadirVIP}`;
+            document.getElementById('stat-hadir-vvip').innerText = `VVIP: ${hadirVVIP}`;
+            document.getElementById('stat-belum').innerText = filled.length - hadir.length;
+            document.getElementById('stat-mtnh').innerText = `MTNH: ${totMTNH}`;
+            document.getElementById('stat-mtql').innerText = `MTQL: ${totMTQL}`;
+        }
+
+        function changeTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200";
+            });
+            const active = document.getElementById(`btn-tab-${tab}`);
+            if (active) {
+                active.className = "tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-white shadow";
+            }
+
+            const filterBox = document.getElementById('filter-box');
+            if (tab === 'filter') {
+                filterBox.classList.remove('hidden');
+            } else {
+                filterBox.classList.add('hidden');
+            }
+
+            renderCards();
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            const emptyState = document.getElementById('empty-state');
+            const search = document.getElementById('input-search').value.toLowerCase().trim();
+            const hideEmpty = document.getElementById('chk-hide-empty').checked;
+            const filterCat = document.getElementById('filter-cat').value;
+            const filterMaj = document.getElementById('filter-maj').value;
+
+            let filtered = allGuests.slice();
+
+            if (hideEmpty) {
+                filtered = filtered.filter(g => !g.is_empty);
+            }
+
+            if (currentTab === 'attended') {
+                filtered = filtered.filter(g => g.is_attended);
+            } else if (currentTab === 'filter') {
+                if (filterCat) filtered = filtered.filter(g => g.category === filterCat);
+                if (filterMaj) filtered = filtered.filter(g => g.asal_majelis === filterMaj);
+            }
+
+            if (search) {
+                filtered = filtered.filter(g => 
+                    g.nama_lengkap.toLowerCase().includes(search) ||
+                    g.nama_panggilan.toLowerCase().includes(search) ||
+                    g.id.toLowerCase().includes(search) ||
+                    g.nomor_tamu.toString() === search
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = filtered.map(g => {
+                const initials = g.nama_lengkap.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+                const isVvip = g.category === 'VVIP';
+                const hasPhoto = Boolean(g.photo_url);
+                const safeName = g.nama_lengkap.replace(/'/g, "\\'");
+
+                // Slot Kosong
+                if (g.is_empty) {
+                    return `
+                        <div class="bg-slate-50/80 p-3.5 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-between gap-3 hover:border-emerald-400 transition">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center font-bold text-xs">
+                                    #${g.nomor_tamu}
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-400">Slot Kosong #${g.nomor_tamu}</h4>
+                                    <span class="text-[10px] text-slate-400 font-mono">${g.id}</span>
+                                </div>
+                            </div>
+                            <button onclick="openAddGuestModal('${g.category}')" class="px-2.5 py-1.5 bg-white border border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Isi Slot</span>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Tamu yang Terisi di Spreadsheet
+                return `
+                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 relative hover:border-emerald-500 transition">
+                        <div class="relative w-12 h-12 flex-shrink-0">
+                            ${hasPhoto ? 
+                                `<img src="${g.photo_url}" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" class="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm">` : ''
+                            }
+                            <div class="w-12 h-12 rounded-full bg-slate-100 border border-slate-300 text-slate-600 font-black text-xs flex items-center justify-center ${hasPhoto ? 'hidden' : ''}">
+                                ${initials || '#'}
+                            </div>
+                            <span class="absolute -bottom-1 -right-1 text-[9px] font-black px-1 rounded ${isVvip ? 'bg-amber-400 text-amber-950' : 'bg-slate-800 text-white'}">
+                                ${g.category}
+                            </span>
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-1">
+                                <h4 class="text-xs font-bold text-slate-800 truncate">${g.nama_lengkap}</h4>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${g.is_attended ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}">
+                                    ${g.is_attended ? 'Hadir' : 'Belum'}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 truncate">Panggilan: <span class="text-slate-600 font-semibold">${g.nama_panggilan}</span></p>
+                            
+                            <div class="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span>Nomor: <b>#${g.nomor_tamu}</b></span>
+                                    <span>•</span>
+                                    <span class="px-1.5 py-0.2 rounded ${g.asal_majelis === 'MTNH' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'} font-bold">${g.asal_majelis}</span>
+                                </div>
+
+                                <div class="flex items-center gap-1">
+                                    <!-- Tombol Hapus Tamu Langsung ke Spreadsheet -->
+                                    <button onclick="deleteGuestFromView('${g.id}', '${safeName}', ${g.nomor_tamu}, '${g.category}')" title="Hapus dari Google Spreadsheet" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+
+                                    <!-- Tombol Batal Hadir / Hadir Manual -->
+                                    ${g.is_attended ? 
+                                        `<button onclick="cancelAttendance('${g.id}', '${safeName}')" title="Batalkan status hadir" class="text-[10px] text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded font-bold transition flex items-center gap-0.5">
+                                            <i data-lucide="undo-2" class="w-2.5 h-2.5"></i> Batal
+                                        </button>` :
+                                        `<button onclick="markAttendanceManual('${g.id}', '${safeName}')" title="Tandai hadir manual" class="text-[10px] text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 px-1.5 py-0.5 rounded font-medium transition">
+                                            + Hadirkan
+                                        </button>`
+                                    }
+                                </div>
+                            </div>
+                            
+                            ${g.attended_at ? `<p class="text-[10px] text-emerald-600 mt-1 font-mono">Scan: ${g.attended_at}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // SCANNER KAMERA
+        // ==========================================
+        function openScanner() {
+            document.getElementById('scanner-modal').classList.remove('hidden');
+            if (qrScanner) return;
+            qrScanner = new Html5Qrcode("camera-reader-box");
+            qrScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                    submitScan(decodedText);
+                    closeScanner();
+                },
+                () => {}
+            ).catch(err => alert("Kamera tidak dapat diakses. Pastikan izin kamera aktif!"));
+        }
+
+        function closeScanner() {
+            document.getElementById('scanner-modal').classList.add('hidden');
+            if (qrScanner) {
+                qrScanner.stop().then(() => {
+                    qrScanner.clear();
+                    qrScanner = null;
+                }).catch(err => console.error(err));
+            }
+        }
+
+        function submitScan(rawCode) {
+            if (!rawCode) return;
+            const guestId = rawCode.split('/').pop().trim().toUpperCase();
+            const guest = allGuests.find(g => g.id.toUpperCase() === guestId);
+
+            if (!guest || guest.is_empty) {
+                alert(`QR Code (${rawCode}) belum terdaftar / masih kursi kosong di Spreadsheet!`);
+                return;
+            }
+
+            activeScannedGuest = guest;
+            const { isFirst, time } = markGuestAttended(guest.id);
+            guest.is_attended = true;
+            guest.attended_at = time;
+
+            showResultModal(guest, isFirst ? 'success' : 'warning', isFirst ? 'VALID: Presensi Berhasil Dicatat!' : `PERHATIAN: Tamu ini SUDAH PERNAH SCAN pada ${time}`);
+            updateStats();
+            renderCards();
+        }
+
+        function showResultModal(guest, status, message) {
+            activeScannedGuest = guest;
+            const modal = document.getElementById('result-modal');
+            const badge = document.getElementById('res-badge');
+            const msg = document.getElementById('res-msg');
+            const photo = document.getElementById('res-photo');
+            const avatar = document.getElementById('res-avatar');
+
+            msg.innerText = message;
+            if (status === 'success') {
+                badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-3 bg-emerald-100 text-emerald-800";
+            } else {
+                badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-3 bg-amber-100 text-amber-900";
+            }
+
+            document.getElementById('res-nama-lengkap').innerText = guest.nama_lengkap;
+            document.getElementById('res-nama-panggilan').innerText = `Panggilan: ${guest.nama_panggilan}`;
+            document.getElementById('res-no').innerText = `Nomor: #${guest.nomor_tamu}`;
+            document.getElementById('res-cat').innerText = guest.category;
+            document.getElementById('res-maj').innerText = guest.asal_majelis;
+            document.getElementById('res-time').innerText = `Waktu Scan: ${guest.attended_at}`;
+
+            if (guest.photo_url) {
+                photo.src = guest.photo_url;
+                photo.onerror = function() {
+                    photo.classList.add('hidden');
+                    avatar.classList.remove('hidden');
+                };
+                photo.classList.remove('hidden');
+                avatar.classList.add('hidden');
+            } else {
+                photo.classList.add('hidden');
+                avatar.classList.remove('hidden');
+                avatar.innerText = guest.nama_lengkap.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeResultModal() {
+            document.getElementById('result-modal').classList.add('hidden');
+        }
+
+        // ==========================================
+        // DOWNLOAD CSV CANVA
+        // ==========================================
+        function downloadCanvaCSV(category) {
+            const guests = allGuests.filter(g => g.category === category);
+            if (guests.length === 0) {
+                alert("Data belum selesai dimuat, tunggu sebentar...");
+                return;
+            }
+
+            let csvContent = "NOMOR_TAMU,ID_TAMU,KATEGORI,NAMA_LENGKAP,NAMA_PANGGILAN,ASAL_MAJELIS,QR_CODE_DATA\n";
+            guests.forEach(g => {
+                const namaL = `"${(g.nama_lengkap || '').replace(/"/g, '""')}"`;
+                const namaP = `"${(g.nama_panggilan || '').replace(/"/g, '""')}"`;
+                csvContent += `${g.nomor_tamu},${g.id},${g.category},${namaL},${namaP},${g.asal_majelis},${g.id}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `canva_data_${category.toLowerCase()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // FIREBASE SYNC (KEHADIRAN MULTI-HP)
+        // ==========================================
+        if (isFirebaseActive) {
+            dbRef.ref('attendance').on('value', (snapshot) => {
+                const cloudAtt = snapshot.val() || {};
+                localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(cloudAtt));
+                allGuests.forEach(g => {
+                    if (cloudAtt[g.id]) {
+                        g.is_attended = true;
+                        g.attended_at = cloudAtt[g.id];
+                    } else {
+                        g.is_attended = false;
+                        g.attended_at = null;
+                    }
+                });
+                updateStats();
+                renderCards();
+            });
+        }
+
+        // Mulai aplikasi langsung dari Google Sheets
+        fetchOnlineSheets();
+    </script>
+</body>
+</html>
