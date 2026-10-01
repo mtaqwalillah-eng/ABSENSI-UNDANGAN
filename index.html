@@ -199,7 +199,7 @@
                 </button>
             </div>
 
-            <!-- List Kategori & Rincian Majelis (Scrollable bila layar ponsel pendek) -->
+            <!-- List Kategori & Rincian Majelis -->
             <div class="space-y-2.5 overflow-y-auto pr-1">
                 <!-- 1. VIP Utama -->
                 <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-emerald-300 transition">
@@ -348,7 +348,7 @@
         </div>
     </div>
 
-    <!-- Modal Scanner Kamera HP Panitia -->
+    <!-- Modal Scanner Kamera HP Panitia (Layer z-50) -->
     <div id="scanner-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-center shadow-2xl relative">
             <button onclick="closeScanner()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600">
@@ -366,8 +366,8 @@
         </div>
     </div>
 
-    <!-- Modal Pop-Up Hasil Scan -->
-    <div id="result-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <!-- Modal Pop-Up Hasil Scan (Layer Terdepan z-[60] di atas kamera) -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative border border-slate-100">
             
             <div id="res-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-3">
@@ -394,10 +394,13 @@
 
             <p id="res-time" class="text-[11px] text-slate-400 font-mono mt-3">Waktu Scan: -</p>
 
-            <button onclick="closeResultModal()" class="w-full mt-5 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-lg">
-                Tutup & Lanjut Scan Berikutnya
+            <!-- Tombol Lanjut: Menutup hasil dan tetap di scanner kamera -->
+            <button onclick="closeResultModal()" class="w-full mt-5 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-lg flex items-center justify-center gap-1.5">
+                <i data-lucide="scan-line" class="w-4 h-4 text-emerald-400"></i>
+                <span>Tutup & Lanjut Scan Berikutnya</span>
             </button>
 
+            <!-- Tombol Batal Hadir: Membatalkan tanpa popup browser dan tetap di scanner kamera -->
             <button id="btn-modal-cancel" onclick="cancelAttendanceFromModal()" class="w-full mt-2 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-rose-200">
                 <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
                 <span>Batalkan Status Hadir Tamu Ini</span>
@@ -438,6 +441,7 @@
         let currentTab = 'all';
         let qrScanner = null;
         let activeScannedGuest = null;
+        let isScanningPaused = false; // Mencegah scan berulang saat pop-up sedang terbuka
 
         function convertDriveUrl(driveUrl) {
             if (!driveUrl || typeof driveUrl !== 'string') return '';
@@ -967,25 +971,34 @@
         }
 
         // ==========================================
-        // SCANNER KAMERA
+        // SCANNER KAMERA REAL-TIME
         // ==========================================
         function openScanner() {
             document.getElementById('scanner-modal').classList.remove('hidden');
+            isScanningPaused = false;
             if (qrScanner) return;
+            
             qrScanner = new Html5Qrcode("camera-reader-box");
             qrScanner.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 220, height: 220 } },
                 (decodedText) => {
+                    // Jika sedang menunggu pop-up ditutup, abaikan scan tambahan
+                    if (isScanningPaused) return;
+                    isScanningPaused = true;
                     submitScan(decodedText);
-                    closeScanner();
+                    // (Scanner TIDAK ditutup di sini, agar tetap standby di tampilan kamera)
                 },
                 () => {}
-            ).catch(err => alert("Kamera tidak dapat diakses. Pastikan izin kamera aktif!"));
+            ).catch(err => {
+                alert("Kamera tidak dapat diakses. Pastikan izin kamera aktif!");
+                closeScanner();
+            });
         }
 
         function closeScanner() {
             document.getElementById('scanner-modal').classList.add('hidden');
+            isScanningPaused = false;
             if (qrScanner) {
                 qrScanner.stop().then(() => {
                     qrScanner.clear();
@@ -1001,6 +1014,7 @@
 
             if (!guest || guest.is_empty) {
                 alert(`QR Code (${rawCode}) belum terdaftar / masih kursi kosong di Spreadsheet!`);
+                setTimeout(() => { isScanningPaused = false; }, 1200);
                 return;
             }
 
@@ -1055,7 +1069,14 @@
         }
 
         function closeResultModal() {
+            // Tutup pop-up hasil
             document.getElementById('result-modal').classList.add('hidden');
+            activeScannedGuest = null;
+
+            // Beri jeda proteksi 1 detik agar tidak langsung men-scan ulang kartu yang sama saat tangan masih di depan kamera
+            setTimeout(() => {
+                isScanningPaused = false;
+            }, 1000);
         }
 
         // ==========================================
