@@ -296,7 +296,7 @@
         const SHEET_ID_VIP = "1-jgBw-gWk-451E_1mCoeqYjV6-2d-N_90efBnDUwSK4";
         const SHEET_ID_VVIP = "1R9tuXxyrY7lH90j2LivV-v1zrdhgwtKRSQOxMq-RIx8";
 
-        // URL GOOGLE APPS SCRIPT ANDA (TEMPEL LINK DARI LANGKAH 1 DI SINI):
+        // URL GOOGLE APPS SCRIPT
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7dQ5USLKHN0TIhXZyIJQsB7ZyWoTwskBFhmVMfSahoLQuu4cy6Rohlkr1IHPGNbu3/exec"; 
 
         const TOTAL_SLOT_VIP = 500;
@@ -354,10 +354,8 @@
             return { isFirst, time: map[guestId] };
         }
 
+        // FUNGSI BATAL HADIR (DIALOG BROWSER DIHAPUS, LANGSUNG EKSEKUSI)
         function cancelAttendance(guestId, guestName) {
-            const konfirmasi = confirm(`Batalkan status hadir untuk tamu:\n"${guestName}" (${guestId})?\n\nStatus akan kembali menjadi 'Belum Hadir'.`);
-            if (!konfirmasi) return;
-
             const map = getAttendanceMap();
             if (map[guestId]) {
                 delete map[guestId];
@@ -384,9 +382,6 @@
         }
 
         function markAttendanceManual(guestId, guestName) {
-            const konfirmasi = confirm(`Tandai tamu ini sebagai HADIR secara manual?\n"${guestName}" (${guestId})`);
-            if (!konfirmasi) return;
-
             const { time } = markGuestAttended(guestId);
             const guest = allGuests.find(g => g.id === guestId);
             if (guest) {
@@ -458,7 +453,7 @@
             const photoRaw = document.getElementById('form-photo-url').value.trim();
 
             if (!APPS_SCRIPT_URL) {
-                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan (baris 229).\n\nSilakan masukkan URL Apps Script agar data baru ini otomatis tertulis ke baris Google Spreadsheet!");
+                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.\n\nSilakan masukkan URL Apps Script agar data baru ini otomatis tertulis ke baris Google Spreadsheet!");
                 return;
             }
 
@@ -474,7 +469,6 @@
                 closeAddGuestModal();
                 alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMemuat ulang data terbaru...`);
                 
-                // Refresh data langsung dari sheets
                 setTimeout(() => { fetchOnlineSheets(); }, 1200);
             } catch (err) {
                 alert("Gagal menghubungi Google Apps Script: " + err.message);
@@ -495,7 +489,6 @@
             }
 
             try {
-                // Hapus juga status hadir jika ada
                 const attMap = getAttendanceMap();
                 if (attMap[guestId]) {
                     delete attMap[guestId];
@@ -514,7 +507,7 @@
         }
 
         // =========================================================================
-        // PENARIKAN DATA LIVE DARI GOOGLE SPREADSHEET (MUTLAK SINKRON & ANTI-CACHE)
+        // PENARIKAN DATA LIVE DARI GOOGLE SPREADSHEET
         // =========================================================================
         function fetchSheetJSONP(sheetId, callbackName) {
             return new Promise((resolve) => {
@@ -579,7 +572,6 @@
                     }
                 };
 
-                // Ditambahkan &_=${Date.now()} agar BROWSER TIDAK PERNAH MENYIMPAN CACHE LAMA
                 const script = document.createElement('script');
                 script.id = `script_${callbackName}`;
                 script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&_=${Date.now()}`;
@@ -598,7 +590,6 @@
             btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
             lucide.createIcons();
 
-            // Bersihkan sisa overrides lama yang pernah tersimpan di browser agar tidak menabrak Sheets
             localStorage.removeItem('guest_overrides_majelis');
 
             const [vipData, vvipData] = await Promise.all([
@@ -612,7 +603,6 @@
             const attendance = getAttendanceMap();
             allGuests = [];
 
-            // Membangun daftar tamu: JUMLAH DAN URUTAN 100% PERSIS DENGAN GOOGLE SPREADSHEET
             function mapCategoryData(sheetRows, category, totalSlots) {
                 const rows = sheetRows || [];
                 const filledCount = rows.length;
@@ -622,7 +612,6 @@
                     const attendedTime = attendance[guestId] || null;
 
                     if (i <= filledCount) {
-                        // Data persis dari baris Google Spreadsheet
                         const item = rows[i - 1];
                         allGuests.push({
                             id: guestId,
@@ -637,7 +626,6 @@
                             attended_at: attendedTime
                         });
                     } else {
-                        // Slot Kosong (belum ada di spreadsheet)
                         allGuests.push({
                             id: guestId,
                             category: category,
@@ -742,7 +730,6 @@
                 const hasPhoto = Boolean(g.photo_url);
                 const safeName = g.nama_lengkap.replace(/'/g, "\\'");
 
-                // Slot Kosong
                 if (g.is_empty) {
                     return `
                         <div class="bg-slate-50/80 p-3.5 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-between gap-3 hover:border-emerald-400 transition">
@@ -763,7 +750,6 @@
                     `;
                 }
 
-                // Tamu yang Terisi di Spreadsheet
                 return `
                     <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 relative hover:border-emerald-500 transition">
                         <div class="relative w-12 h-12 flex-shrink-0">
