@@ -68,30 +68,51 @@
             </div>
         </div>
 
-        <!-- Dashboard Ringkasan Statistik -->
+        <!-- Dashboard Ringkasan Statistik (Tepat 4 Tab Presisi & Simetris) -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
-                <span class="text-xs text-slate-500 font-bold">Total Terdata</span>
-                <p id="stat-terisi" class="text-2xl font-black text-slate-800 mt-0.5">0</p>
-                <p class="text-[11px] text-slate-400 mt-1" id="sub-terisi">500 VIP • 50 VVIP</p>
+            <!-- 1. Total Terdata (Klik untuk Membuka Modal Rekap Kategori & Majelis) -->
+            <div onclick="openRekapModal()" class="group bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-500 hover:shadow-md transition select-none flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-4 h-4 text-amber-500"></i>
+                            <span class="text-xs text-emerald-800 font-extrabold uppercase tracking-wide">TOTAL</span>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-emerald-600 transition-transform group-hover:translate-x-0.5"></i>
+                    </div>
+                    <p id="stat-terisi" class="text-2xl font-black text-slate-800 mt-1">0</p>
+                </div>
+                <p class="text-[11px] text-emerald-600 font-bold mt-1" id="sub-terisi">VIP, VVIP</p>
             </div>
-            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
-                <span class="text-xs text-slate-500 font-bold">Sudah Hadir (Scan)</span>
-                <p id="stat-hadir" class="text-2xl font-black text-emerald-600 mt-0.5">0</p>
+
+            <!-- 2. Sudah Hadir (Scan) -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-bold">Sudah Hadir (Scan)</span>
+                    <p id="stat-hadir" class="text-2xl font-black text-emerald-600 mt-1">0</p>
+                </div>
                 <div class="flex gap-2 text-[10px] text-emerald-700 font-bold mt-1">
                     <span id="stat-hadir-vip">VIP: 0</span> • <span id="stat-hadir-vvip">VVIP: 0</span>
                 </div>
             </div>
-            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-                <span class="text-xs text-slate-500 font-bold">Belum Hadir</span>
-                <p id="stat-belum" class="text-2xl font-black text-amber-600 mt-0.5">0</p>
+
+            <!-- 3. Belum Hadir -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-bold">Belum Hadir</span>
+                    <p id="stat-belum" class="text-2xl font-black text-amber-600 mt-1">0</p>
+                </div>
                 <p class="text-[10px] text-slate-400 mt-1">Menunggu kedatangan</p>
             </div>
-            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
-                <span class="text-xs text-slate-500 font-bold">Asal Majelis</span>
-                <div class="text-xs font-black text-slate-700 mt-1 flex justify-between">
-                    <span id="stat-mtnh">MTNH: 0</span>
-                    <span id="stat-mtql">MTQL: 0</span>
+
+            <!-- 4. Asal Majelis -->
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-bold">Asal Majelis</span>
+                    <div class="text-xs font-black text-slate-700 mt-1 flex justify-between">
+                        <span id="stat-mtnh">MTNH: 0</span>
+                        <span id="stat-mtql">MTQL: 0</span>
+                    </div>
                 </div>
                 <p class="text-[10px] text-slate-400 mt-1">Sebaran kedua majelis</p>
             </div>
@@ -163,6 +184,102 @@
             <p class="text-xs font-medium">Data tamu tidak ditemukan.</p>
         </div>
     </main>
+
+    <!-- MODAL POP-UP REKAP KATEGORI & MAJELIS -->
+    <div id="rekap-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-left shadow-2xl relative border border-slate-100 max-h-[90vh] flex flex-col">
+            <!-- Header Modal -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3 flex-shrink-0">
+                <h3 class="text-xs font-black text-emerald-900 tracking-wide uppercase flex items-center gap-1.5">
+                    <i data-lucide="layers" class="w-4 h-4 text-emerald-600"></i>
+                    <span>Rekap Tamu Berdasarkan Kategori</span>
+                </h3>
+                <button onclick="closeRekapModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- List Kategori & Rincian Majelis (Scrollable bila layar ponsel pendek) -->
+            <div class="space-y-2.5 overflow-y-auto pr-1">
+                <!-- 1. VIP Utama -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-emerald-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">VIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Slot Undangan VIP</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 text-emerald-700 font-black text-xs">
+                        <span id="rekap-vip-count">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- 2. VVIP Utama -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-amber-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">VVIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Slot Undangan Khusus</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-amber-500/30 bg-amber-50 text-amber-800 font-black text-xs">
+                        <span id="rekap-vvip-count">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- Pembatas & Sub-judul Rincian Per Majelis -->
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Rincian Per Majelis</span>
+                </div>
+
+                <!-- 3. MTNH - VIP -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-emerald-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">MTNH VIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Majelis MTNH • VIP</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 text-emerald-700 font-black text-xs">
+                        <span id="rekap-mtnh-vip">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- 4. MTNH - VVIP -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-amber-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">MTNH VVIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Majelis MTNH • VVIP</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-amber-500/30 bg-amber-50 text-amber-800 font-black text-xs">
+                        <span id="rekap-mtnh-vvip">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- 5. MTQL - VIP -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-emerald-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">MTQL VIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Majelis MTQL • VIP</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-50 text-emerald-700 font-black text-xs">
+                        <span id="rekap-mtql-vip">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- 6. MTQL - VVIP -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-amber-300 transition">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">MTQL VVIP</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5 font-medium">Majelis MTQL • VVIP</p>
+                    </div>
+                    <div class="px-3.5 py-1.5 rounded-full border border-amber-500/30 bg-amber-50 text-amber-800 font-black text-xs">
+                        <span id="rekap-mtql-vvip">0 Tamu</span>
+                    </div>
+                </div>
+
+                <!-- Total Kuota Terisi -->
+                <div class="p-3 rounded-2xl bg-emerald-900 text-white flex items-center justify-between text-[11px] font-bold px-4 shadow mt-2">
+                    <span>Total Kuota Terisi</span>
+                    <span id="rekap-total-ratio" class="text-emerald-300 font-mono">0 / 550 Kursi</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL POPUP TAMBAH TAMU MANUAL (ANTI DUPLIKAT KURSI) -->
     <div id="add-guest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
@@ -296,7 +413,6 @@
         const SHEET_ID_VIP = "1-jgBw-gWk-451E_1mCoeqYjV6-2d-N_90efBnDUwSK4";
         const SHEET_ID_VVIP = "1R9tuXxyrY7lH90j2LivV-v1zrdhgwtKRSQOxMq-RIx8";
 
-        // URL GOOGLE APPS SCRIPT
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7dQ5USLKHN0TIhXZyIJQsB7ZyWoTwskBFhmVMfSahoLQuu4cy6Rohlkr1IHPGNbu3/exec"; 
 
         const TOTAL_SLOT_VIP = 500;
@@ -354,7 +470,7 @@
             return { isFirst, time: map[guestId] };
         }
 
-        // FUNGSI BATAL HADIR (DIALOG BROWSER DIHAPUS, LANGSUNG EKSEKUSI)
+        // FUNGSI BATAL STATUS HADIR (LANGSUNG EKSEKUSI TANPA POP-UP ALERT BROWSER)
         function cancelAttendance(guestId, guestName) {
             const map = getAttendanceMap();
             if (map[guestId]) {
@@ -391,6 +507,43 @@
 
             updateStats();
             renderCards();
+        }
+
+        // ==========================================
+        // MODAL REKAP KATEGORI & MAJELIS LENGKAP
+        // ==========================================
+        function openRekapModal() {
+            const filled = allGuests.filter(g => !g.is_empty);
+            
+            // Total Kategori Utama
+            const countVIP = filled.filter(g => g.category === 'VIP').length;
+            const countVVIP = filled.filter(g => g.category === 'VVIP').length;
+
+            // Rincian Majelis MTNH
+            const mtnhVIP = filled.filter(g => g.asal_majelis === 'MTNH' && g.category === 'VIP').length;
+            const mtnhVVIP = filled.filter(g => g.asal_majelis === 'MTNH' && g.category === 'VVIP').length;
+
+            // Rincian Majelis MTQL
+            const mtqlVIP = filled.filter(g => g.asal_majelis === 'MTQL' && g.category === 'VIP').length;
+            const mtqlVVIP = filled.filter(g => g.asal_majelis === 'MTQL' && g.category === 'VVIP').length;
+
+            // Pasang ke Elemen HTML Modal
+            document.getElementById('rekap-vip-count').innerText = `${countVIP} Tamu`;
+            document.getElementById('rekap-vvip-count').innerText = `${countVVIP} Tamu`;
+
+            document.getElementById('rekap-mtnh-vip').innerText = `${mtnhVIP} Tamu`;
+            document.getElementById('rekap-mtnh-vvip').innerText = `${mtnhVVIP} Tamu`;
+            document.getElementById('rekap-mtql-vip').innerText = `${mtqlVIP} Tamu`;
+            document.getElementById('rekap-mtql-vvip').innerText = `${mtqlVVIP} Tamu`;
+
+            document.getElementById('rekap-total-ratio').innerText = `${filled.length} / ${allGuests.length} Kursi`;
+
+            document.getElementById('rekap-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeRekapModal() {
+            document.getElementById('rekap-modal').classList.add('hidden');
         }
 
         // ==========================================
@@ -649,6 +802,9 @@
             renderCards();
         }
 
+        // ==========================================
+        // UPDATE STATISTIK KESELURUHAN (GLOBAL)
+        // ==========================================
         function updateStats() {
             const filled = allGuests.filter(g => !g.is_empty);
             const hadir = allGuests.filter(g => g.is_attended);
@@ -658,7 +814,7 @@
             const totMTQL = filled.filter(g => g.asal_majelis === 'MTQL').length;
 
             document.getElementById('stat-terisi').innerText = filled.length;
-            document.getElementById('sub-terisi').innerText = `${allGuests.length} Total Slot Disediakan`;
+            document.getElementById('sub-terisi').innerText = "VIP, VVIP";
             document.getElementById('stat-hadir').innerText = hadir.length;
             document.getElementById('stat-hadir-vip').innerText = `VIP: ${hadirVIP}`;
             document.getElementById('stat-hadir-vvip').innerText = `VVIP: ${hadirVVIP}`;
@@ -687,6 +843,9 @@
             renderCards();
         }
 
+        // ==========================================
+        // RENDER KARTU
+        // ==========================================
         function renderCards() {
             const container = document.getElementById('cards-container');
             const emptyState = document.getElementById('empty-state');
@@ -720,6 +879,7 @@
             if (filtered.length === 0) {
                 container.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                lucide.createIcons();
                 return;
             }
             emptyState.classList.add('hidden');
