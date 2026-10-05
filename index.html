@@ -82,7 +82,7 @@
                     </div>
                     <p id="stat-terisi" class="text-2xl font-black text-slate-800 mt-1">0</p>
                 </div>
-                <p class="text-[11px] text-emerald-600 font-bold mt-1" id="sub-terisi">VIP, VVIP</p>
+                <p class="text-[11px] text-emerald-600 font-bold mt-1" id="sub-terisi">VIP: 0 • VVIP: 0</p>
             </div>
 
             <!-- 2. Sudah Hadir (Scan) -->
@@ -118,7 +118,7 @@
             </div>
         </div>
 
-        <!-- 3 Tombol Utama Sesuai Permintaan -->
+        <!-- 3 Tombol Tab Navigasi -->
         <div class="flex flex-wrap items-center gap-2 mb-4 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm">
             <!-- Tombol 1: Total Tamu Undangan -->
             <button id="btn-tab-all" onclick="changeTab('all')" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 text-white shadow">
@@ -380,7 +380,6 @@
                 <div id="res-avatar" class="w-36 h-36 rounded-full bg-slate-800 text-white text-4xl font-black flex items-center justify-center border-4 border-white shadow-xl mx-auto hidden">
                     AB
                 </div>
-                <!-- Indikator Ikon Kaca Pembesar di Pojok Foto Lingkaran -->
                 <div class="absolute bottom-0 right-1 bg-slate-900/85 text-emerald-400 p-1.5 rounded-full shadow-lg border border-white/20 transition group-hover:scale-110">
                     <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
                 </div>
@@ -405,7 +404,7 @@
                 <span>Tutup & Lanjut Scan Berikutnya</span>
             </button>
 
-            <!-- Tombol Batal Hadir: Membatalkan tanpa popup browser dan tetap di scanner kamera -->
+            <!-- Tombol Batal Hadir -->
             <button id="btn-modal-cancel" onclick="cancelAttendanceFromModal()" class="w-full mt-2 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-rose-200">
                 <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
                 <span>Batalkan Status Hadir Tamu Ini</span>
@@ -414,15 +413,12 @@
     </div>
 
     <!-- MODAL FOTO FULL SCREEN (Layer z-[70] di atas Hasil Scan) -->
-    <!-- Klik di area luar foto otomatis menutup modal dan kembali ke tampilan hasil scan -->
     <div id="fullphoto-modal" onclick="closeFullPhoto()" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex flex-col items-center justify-center p-4 hidden select-none transition-opacity duration-200">
-        <!-- Tombol Kembali / Tutup -->
         <button onclick="closeFullPhoto()" class="absolute top-5 right-5 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-2 rounded-full transition shadow-lg z-10 flex items-center gap-1.5 text-xs font-bold border border-white/20">
             <i data-lucide="x" class="w-4 h-4"></i>
             <span>Kembali</span>
         </button>
         
-        <!-- Wadah Gambar Penuh (event.stopPropagation agar klik di gambar tidak langsung menutup) -->
         <div class="relative max-w-md sm:max-w-lg w-full max-h-[85vh] flex flex-col items-center justify-center p-2" onclick="event.stopPropagation()">
             <img id="fullphoto-img" src="" alt="Foto Lengkap Tamu" referrerpolicy="no-referrer" class="max-h-[75vh] w-auto max-w-full rounded-2xl shadow-2xl object-contain border-2 border-white/20 bg-black/40">
             <div class="mt-3 flex flex-col items-center">
@@ -465,7 +461,7 @@
         let currentTab = 'all';
         let qrScanner = null;
         let activeScannedGuest = null;
-        let isScanningPaused = false; // Mencegah scan berulang saat pop-up sedang terbuka
+        let isScanningPaused = false;
 
         function convertDriveUrl(driveUrl) {
             if (!driveUrl || typeof driveUrl !== 'string') return '';
@@ -477,7 +473,7 @@
         }
 
         // ==========================================
-        // FITUR LIHAT FOTO LENGKAP (FULL PHOTO MODAL)
+        // FITUR LIHAT FOTO LENGKAP
         // ==========================================
         function openFullPhoto() {
             if (!activeScannedGuest || !activeScannedGuest.photo_url) return;
@@ -519,7 +515,6 @@
             return { isFirst, time: map[guestId] };
         }
 
-        // FUNGSI BATAL STATUS HADIR (LANGSUNG EKSEKUSI TANPA POP-UP ALERT BROWSER)
         function cancelAttendance(guestId, guestName) {
             const map = getAttendanceMap();
             if (map[guestId]) {
@@ -564,19 +559,15 @@
         function openRekapModal() {
             const filled = allGuests.filter(g => !g.is_empty);
             
-            // Total Kategori Utama
             const countVIP = filled.filter(g => g.category === 'VIP').length;
             const countVVIP = filled.filter(g => g.category === 'VVIP').length;
 
-            // Rincian Majelis MTNH
             const mtnhVIP = filled.filter(g => g.asal_majelis === 'MTNH' && g.category === 'VIP').length;
             const mtnhVVIP = filled.filter(g => g.asal_majelis === 'MTNH' && g.category === 'VVIP').length;
 
-            // Rincian Majelis MTQL
             const mtqlVIP = filled.filter(g => g.asal_majelis === 'MTQL' && g.category === 'VIP').length;
             const mtqlVVIP = filled.filter(g => g.asal_majelis === 'MTQL' && g.category === 'VVIP').length;
 
-            // Pasang ke Elemen HTML Modal
             document.getElementById('rekap-vip-count').innerText = `${countVIP} Tamu`;
             document.getElementById('rekap-vvip-count').innerText = `${countVVIP} Tamu`;
 
@@ -596,7 +587,7 @@
         }
 
         // ==========================================
-        // FITUR TAMBAH / HAPUS TERHUBUNG SPREADSHEET
+        // FITUR TAMBAH / HAPUS TAMU MANUAL
         // ==========================================
         function populateAvailableSlotDropdown() {
             const cat = document.getElementById('form-cat').value;
@@ -655,7 +646,7 @@
             const photoRaw = document.getElementById('form-photo-url').value.trim();
 
             if (!APPS_SCRIPT_URL) {
-                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.\n\nSilakan masukkan URL Apps Script agar data baru ini otomatis tertulis ke baris Google Spreadsheet!");
+                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.");
                 return;
             }
 
@@ -670,7 +661,6 @@
 
                 closeAddGuestModal();
                 alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMemuat ulang data terbaru...`);
-                
                 setTimeout(() => { fetchOnlineSheets(); }, 1200);
             } catch (err) {
                 alert("Gagal menghubungi Google Apps Script: " + err.message);
@@ -686,7 +676,7 @@
             if (!konfirmasi) return;
 
             if (!APPS_SCRIPT_URL) {
-                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.\n\nUntuk menghapus tamu langsung dari web ke Google Spreadsheet, silakan pasang URL Apps Script terlebih dahulu.");
+                alert("Perhatian: Pasang URL Apps Script terlebih dahulu.");
                 return;
             }
 
@@ -709,63 +699,105 @@
         }
 
         // =========================================================================
-        // PENARIKAN DATA LIVE DARI GOOGLE SPREADSHEET
+        // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET (ANTI-OFFSET & ANTI-SALAH DETEKSI)
         // =========================================================================
-        function fetchSheetJSONP(sheetId, callbackName) {
+        function fetchSheetDataJSONP(sheetId, sheetName, forcedMajelis = null) {
             return new Promise((resolve) => {
+                const callbackName = 'gviz_cb_' + Math.floor(Math.random() * 10000000);
                 const timeout = setTimeout(() => { resolve(null); }, 8000);
 
                 window[callbackName] = function(json) {
                     clearTimeout(timeout);
                     try {
+                        if (!json || !json.table || !json.table.rows) {
+                            resolve(null);
+                            return;
+                        }
+
                         const table = json.table;
-                        const cols = table.cols.map(c => (c.label || '').toLowerCase());
-                        
+                        const cols = (table.cols || []).map(c => (c.label || '').toLowerCase().trim());
+
                         let idxNama = cols.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
                         let idxPanggilan = cols.findIndex(c => c.includes('panggilan'));
                         let idxMajelis = cols.findIndex(c => c.includes('majelis') || c.includes('asal'));
                         let idxPhoto = cols.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
 
                         let startRow = 0;
+                        // Jika label kolom kosong, cek baris pertama
                         if (idxNama === -1 && table.rows.length > 0) {
-                            const firstRow = table.rows[0].c.map(cell => cell ? (cell.v || '').toString().toLowerCase() : '');
-                            idxNama = firstRow.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
-                            idxPanggilan = firstRow.findIndex(c => c.includes('panggilan'));
-                            idxMajelis = firstRow.findIndex(c => c.includes('majelis') || c.includes('asal'));
-                            idxPhoto = firstRow.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
-                            if (idxNama !== -1) startRow = 1;
+                            const firstRow = (table.rows[0].c || []).map(cell => cell ? (cell.v || '').toString().toLowerCase().trim() : '');
+                            const rowIdxNama = firstRow.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
+                            if (rowIdxNama !== -1) {
+                                idxNama = rowIdxNama;
+                                idxPanggilan = firstRow.findIndex(c => c.includes('panggilan'));
+                                idxMajelis = firstRow.findIndex(c => c.includes('majelis') || c.includes('asal'));
+                                idxPhoto = firstRow.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
+                                startRow = 1;
+                            }
                         }
-
-                        if (idxNama === -1) idxNama = 1;
-                        if (idxPanggilan === -1) idxPanggilan = 2;
-                        if (idxMajelis === -1) idxMajelis = 3;
-                        if (idxPhoto === -1) idxPhoto = 5;
 
                         const results = [];
                         for (let r = startRow; r < table.rows.length; r++) {
                             const row = table.rows[r];
                             if (!row || !row.c) continue;
-                            const getVal = (idx) => {
+
+                            const getCell = (idx) => {
                                 if (idx < 0 || idx >= row.c.length || !row.c[idx]) return '';
                                 return (row.c[idx].f || row.c[idx].v || '').toString().trim();
                             };
-                            const nama = getVal(idxNama);
-                            if (!nama || nama.toLowerCase() === 'nan' || nama.toLowerCase() === 'nama lengkap') continue;
-                            
-                            const panggilan = getVal(idxPanggilan) || '-';
-                            let majelis = getVal(idxMajelis).toUpperCase();
-                            majelis = majelis.includes('MTNH') ? 'MTNH' : 'MTQL';
-                            const photo = convertDriveUrl(getVal(idxPhoto));
+
+                            let nama = idxNama !== -1 ? getCell(idxNama) : '';
+                            let panggilan = idxPanggilan !== -1 ? getCell(idxPanggilan) : '';
+                            let majelisRaw = idxMajelis !== -1 ? getCell(idxMajelis).toUpperCase() : '';
+                            let photoRaw = idxPhoto !== -1 ? getCell(idxPhoto) : '';
+
+                            // Deteksi dinamis berbasis tipe konten jika indeks header belum presisi
+                            if (!nama || idxNama === -1) {
+                                for (let cIdx = 0; cIdx < row.c.length; cIdx++) {
+                                    const val = getCell(cIdx);
+                                    if (!val) continue;
+                                    const upper = val.toUpperCase();
+                                    if (upper.includes('MTQL') || upper.includes('MTNH')) {
+                                        if (!majelisRaw) majelisRaw = upper;
+                                    } else if (val.startsWith('http')) {
+                                        if (!photoRaw) photoRaw = val;
+                                    } else if (!/^\d+$/.test(val) && val.length > 3 && !nama) {
+                                        nama = val;
+                                    }
+                                }
+                            }
+
+                            if (!nama || nama.toLowerCase() === 'nan' || nama.toLowerCase() === 'nama lengkap' || nama.toLowerCase() === 'nama tamu') {
+                                continue;
+                            }
+
+                            let majelis = forcedMajelis;
+                            if (!majelis) {
+                                if (majelisRaw.includes('MTNH')) {
+                                    majelis = 'MTNH';
+                                } else if (majelisRaw.includes('MTQL')) {
+                                    majelis = 'MTQL';
+                                } else {
+                                    // Cek seluruh isi sel pada baris jika majelis belum ditemukan
+                                    for (let cIdx = 0; cIdx < row.c.length; cIdx++) {
+                                        const cVal = getCell(cIdx).toUpperCase();
+                                        if (cVal.includes('MTNH')) { majelis = 'MTNH'; break; }
+                                        if (cVal.includes('MTQL')) { majelis = 'MTQL'; break; }
+                                    }
+                                }
+                            }
+
+                            if (!majelis) continue; // Jangan masukkan baris sampah
 
                             results.push({
                                 nama_lengkap: nama,
-                                nama_panggilan: panggilan,
+                                nama_panggilan: panggilan || '-',
                                 asal_majelis: majelis,
-                                photo_url: photo
+                                photo_url: convertDriveUrl(photoRaw)
                             });
                         }
                         resolve(results);
-                    } catch(e) {
+                    } catch (e) {
                         resolve(null);
                     } finally {
                         delete window[callbackName];
@@ -776,7 +808,11 @@
 
                 const script = document.createElement('script');
                 script.id = `script_${callbackName}`;
-                script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&_=${Date.now()}`;
+                let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&headers=1&_=${Date.now()}`;
+                if (sheetName) {
+                    url += `&sheet=${encodeURIComponent(sheetName)}`;
+                }
+                script.src = url;
                 script.onerror = function() {
                     clearTimeout(timeout);
                     delete window[callbackName];
@@ -794,10 +830,48 @@
 
             localStorage.removeItem('guest_overrides_majelis');
 
-            const [vipData, vvipData] = await Promise.all([
-                fetchSheetJSONP(SHEET_ID_VIP, 'handleVIPResponse'),
-                fetchSheetJSONP(SHEET_ID_VVIP, 'handleVVIPResponse')
+            // 1. Ambil data VIP (Target: MTQL = 162, MTNH = 243 -> Total VIP = 405)
+            const [vipMTQL, vipMTNH] = await Promise.all([
+                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTQL', 'MTQL'),
+                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTNH', 'MTNH')
             ]);
+
+            let finalVIP = [];
+            if (vipMTQL && vipMTQL.length > 0 && vipMTNH && vipMTNH.length > 0) {
+                finalVIP = [...vipMTQL, ...vipMTNH];
+            } else {
+                // Fallback VIP jika tab spesifik gagal
+                const fallbackVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null);
+                if (fallbackVIP) {
+                    finalVIP = fallbackVIP;
+                }
+            }
+
+            // 2. Ambil data VVIP (Target: MTQL = 22, MTNH = 25 -> Total VVIP = 47)
+            // Mengambil dari sheet tanggapan form utama yang menyimpan seluruh 47 tamu murni tanpa error formula
+            const vvipFormResponses = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null);
+            
+            let finalVVIP = [];
+            if (vvipFormResponses && vvipFormResponses.length >= 47) {
+                const vvipMTQL = vvipFormResponses.filter(g => g.asal_majelis === 'MTQL');
+                const vvipMTNH = vvipFormResponses.filter(g => g.asal_majelis === 'MTNH');
+                finalVVIP = [...vvipMTQL, ...vvipMTNH];
+            } else {
+                // Fallback mencoba membaca tab terpisah
+                const [tabVvipMTQL, tabVvipMTNH] = await Promise.all([
+                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTQL', 'MTQL'),
+                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTNH', 'MTNH')
+                ]);
+                let combined = [];
+                if (tabVvipMTQL && tabVvipMTQL.length > 0) combined.push(...tabVvipMTQL);
+                if (tabVvipMTNH && tabVvipMTNH.length > 0) combined.push(...tabVvipMTNH);
+
+                if (combined.length >= 47) {
+                    finalVVIP = combined;
+                } else if (vvipFormResponses && vvipFormResponses.length > 0) {
+                    finalVVIP = vvipFormResponses;
+                }
+            }
 
             btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Refresh Sheets</span>`;
             lucide.createIcons();
@@ -844,8 +918,9 @@
                 }
             }
 
-            mapCategoryData(vvipData, 'VVIP', TOTAL_SLOT_VVIP);
-            mapCategoryData(vipData, 'VIP', TOTAL_SLOT_VIP);
+            // Pemetaan Slot: VVIP (50 slot) & VIP (500 slot)
+            mapCategoryData(finalVVIP, 'VVIP', TOTAL_SLOT_VVIP);
+            mapCategoryData(finalVIP, 'VIP', TOTAL_SLOT_VIP);
 
             updateStats();
             renderCards();
@@ -857,13 +932,18 @@
         function updateStats() {
             const filled = allGuests.filter(g => !g.is_empty);
             const hadir = allGuests.filter(g => g.is_attended);
+            
+            const filledVIP = filled.filter(g => g.category === 'VIP').length;
+            const filledVVIP = filled.filter(g => g.category === 'VVIP').length;
+
             const hadirVIP = hadir.filter(g => g.category === 'VIP').length;
             const hadirVVIP = hadir.filter(g => g.category === 'VVIP').length;
+
             const totMTNH = filled.filter(g => g.asal_majelis === 'MTNH').length;
             const totMTQL = filled.filter(g => g.asal_majelis === 'MTQL').length;
 
             document.getElementById('stat-terisi').innerText = filled.length;
-            document.getElementById('sub-terisi').innerText = "VIP, VVIP";
+            document.getElementById('sub-terisi').innerText = `VIP: ${filledVIP} • VVIP: ${filledVVIP}`;
             document.getElementById('stat-hadir').innerText = hadir.length;
             document.getElementById('stat-hadir-vip').innerText = `VIP: ${hadirVIP}`;
             document.getElementById('stat-hadir-vvip').innerText = `VVIP: ${hadirVVIP}`;
@@ -990,12 +1070,10 @@
                                 </div>
 
                                 <div class="flex items-center gap-1">
-                                    <!-- Tombol Hapus Tamu Langsung ke Spreadsheet -->
                                     <button onclick="deleteGuestFromView('${g.id}', '${safeName}', ${g.nomor_tamu}, '${g.category}')" title="Hapus dari Google Spreadsheet" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                     </button>
 
-                                    <!-- Tombol Batal Hadir / Hadir Manual -->
                                     ${g.is_attended ? 
                                         `<button onclick="cancelAttendance('${g.id}', '${safeName}')" title="Batalkan status hadir" class="text-[10px] text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded font-bold transition flex items-center gap-0.5">
                                             <i data-lucide="undo-2" class="w-2.5 h-2.5"></i> Batal
@@ -1028,7 +1106,6 @@
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 220, height: 220 } },
                 (decodedText) => {
-                    // Jika sedang menunggu pop-up ditutup, abaikan scan tambahan
                     if (isScanningPaused) return;
                     isScanningPaused = true;
                     submitScan(decodedText);
@@ -1113,11 +1190,9 @@
         }
 
         function closeResultModal() {
-            // Tutup pop-up hasil
             document.getElementById('result-modal').classList.add('hidden');
             activeScannedGuest = null;
 
-            // Beri jeda proteksi 1 detik agar tidak langsung men-scan ulang kartu yang sama saat tangan masih di depan kamera
             setTimeout(() => {
                 isScanningPaused = false;
             }, 1000);
@@ -1171,7 +1246,7 @@
             });
         }
 
-        // Mulai aplikasi langsung dari Google Sheets
+        // Jalankan aplikasi langsung dari Google Sheets
         fetchOnlineSheets();
     </script>
 </body>
