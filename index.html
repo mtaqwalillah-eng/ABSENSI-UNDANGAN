@@ -431,12 +431,26 @@
     <!-- Script Logika Aplikasi -->
     <script>
         // =========================================================================
-        // KONFIGURASI DATABASE
+        // KONFIGURASI DATABASE & APPS SCRIPT DEPLOY TERBARU
         // =========================================================================
         const SHEET_ID_VIP = "1-jgBw-gWk-451E_1mCoeqYjV6-2d-N_90efBnDUwSK4";
         const SHEET_ID_VVIP = "1R9tuXxyrY7lH90j2LivV-v1zrdhgwtKRSQOxMq-RIx8";
 
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7dQ5USLKHN0TIhXZyIJQsB7ZyWoTwskBFhmVMfSahoLQuu4cy6Rohlkr1IHPGNbu3/exec"; 
+        // Link Deploy terbaru yang Anda kirimkan
+        const APPS_SCRIPT_DEPLOY_RAW = "https://script.google.com/macros/library/d/1ETHLqYKZVM3MYf6lbZt6u2tc2j8TkMsoftC_lxknw7bynniC-Rspyqh1/6";
+
+        // Normalisasi URL otomatis: mengonversi link library ke endpoint eksekusi Web App (/exec)
+        function getAppsScriptEndpoint() {
+            const raw = APPS_SCRIPT_DEPLOY_RAW.trim();
+            if (raw.includes('/macros/library/d/')) {
+                const parts = raw.split('/macros/library/d/')[1].split('/');
+                const scriptId = parts[0];
+                return `https://script.google.com/macros/s/${scriptId}/exec`;
+            }
+            return raw;
+        }
+
+        const APPS_SCRIPT_URL = getAppsScriptEndpoint();
 
         const TOTAL_SLOT_VIP = 500;
         const TOTAL_SLOT_VVIP = 50;
@@ -462,6 +476,35 @@
         let qrScanner = null;
         let activeScannedGuest = null;
         let isScanningPaused = false;
+
+        // =========================================================================
+        // CACHE SINKRONISASI HAPUS (ANTI-GHOSTING & ANTI-CACHE DELAY GOOGLE CDN)
+        // =========================================================================
+        function getDeletedCache() {
+            try {
+                const list = JSON.parse(localStorage.getItem('deleted_guests_cache')) || [];
+                const now = Date.now();
+                // Simpan cache proteksi selama 30 menit (mengatasi cache CDN Google)
+                return list.filter(item => (now - (item.ts || 0)) < 1800000);
+            } catch(e) {
+                return [];
+            }
+        }
+
+        function addDeletedCache(nama, category, majelis) {
+            const list = getDeletedCache();
+            const clean = (nama || '').trim().toLowerCase();
+            if (!list.some(d => d.nama === clean && d.category === category)) {
+                list.push({ nama: clean, category: category, majelis: majelis, ts: Date.now() });
+                localStorage.setItem('deleted_guests_cache', JSON.stringify(list));
+            }
+        }
+
+        function isGuestDeletedInCache(nama, category) {
+            const list = getDeletedCache();
+            const clean = (nama || '').trim().toLowerCase();
+            return list.some(d => d.nama === clean && d.category === category);
+        }
 
         function convertDriveUrl(driveUrl) {
             if (!driveUrl || typeof driveUrl !== 'string') return '';
@@ -541,14 +584,18 @@
             cancelAttendance(activeScannedGuest.id, activeScannedGuest.nama_lengkap);
         }
 
-        function markAttendanceManual(guestId, guestName) {
-            const { time } = markGuestAttended(guestId);
+        function cancelAttendanceById(guestId) {
             const guest = allGuests.find(g => g.id === guestId);
-            if (guest) {
-                guest.is_attended = true;
-                guest.attended_at = time;
-            }
+            if (!guest) return;
+            cancelAttendance(guest.id, guest.nama_lengkap);
+        }
 
+        function markAttendanceById(guestId) {
+            const guest = allGuests.find(g => g.id === guestId);
+            if (!guest) return;
+            const { time } = markGuestAttended(guest.id);
+            guest.is_attended = true;
+            guest.attended_at = time;
             updateStats();
             renderCards();
         }
@@ -587,7 +634,7 @@
         }
 
         // ==========================================
-        // FITUR TAMBAH / HAPUS TAMU MANUAL
+        // FITUR TAMBAH / HAPUS TAMU MANUAL (2 ARAH)
         // ==========================================
         function populateAvailableSlotDropdown() {
             const cat = document.getElementById('form-cat').value;
@@ -646,7 +693,7 @@
             const photoRaw = document.getElementById('form-photo-url').value.trim();
 
             if (!APPS_SCRIPT_URL) {
-                alert("Perhatian: Anda belum memasukkan URL Google Apps Script di kodingan.");
+                alert("Perhatian: URL Apps Script belum terpasang.");
                 return;
             }
 
@@ -656,11 +703,17 @@
             lucide.createIcons();
 
             try {
-                const url = `${APPS_SCRIPT_URL}?action=add&category=${cat}&nama=${encodeURIComponent(namaLengkap)}&panggilan=${encodeURIComponent(namaPanggilan)}&majelis=${majelis}&photo=${encodeURIComponent(photoRaw)}&_=${Date.now()}`;
+                const targetSheetId = (cat === 'VVIP') ? SHEET_ID_VVIP : SHEET_ID_VIP;
+                const url = `${APPS_SCRIPT_URL}?action=add&category=${cat}&nama=${encodeURIComponent(namaLengkap)}&panggilan=${encodeURIComponent(namaPanggilan)}&majelis=${encodeURIComponent(majelis)}&photo=${encodeURIComponent(photoRaw)}&sheetId=${encodeURIComponent(targetSheetId)}&_=${Date.now()}`;
+                
                 await fetch(url, { mode: 'no-cors' });
 
+                // Bersihkan dari cache blacklist jika nama ini pernah dihapus sebelumnya
+                const dCache = getDeletedCache().filter(d => d.nama !== namaLengkap.toLowerCase());
+                localStorage.setItem('deleted_guests_cache', JSON.stringify(dCache));
+
                 closeAddGuestModal();
-                alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMemuat ulang data terbaru...`);
+                alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMenyinkronkan data terbaru...`);
                 setTimeout(() => { fetchOnlineSheets(); }, 1200);
             } catch (err) {
                 alert("Gagal menghubungi Google Apps Script: " + err.message);
@@ -671,37 +724,79 @@
             }
         }
 
-        async function deleteGuestFromView(guestId, guestName, nomor, category) {
-            const konfirmasi = confirm(`Hapus tamu:\n"${guestName}" (${guestId})?\n\nData ini akan langsung dihapus dari Google Spreadsheet.`);
+        async function deleteGuestById(guestId) {
+            const guest = allGuests.find(g => g.id === guestId);
+            if (!guest || guest.is_empty) return;
+
+            const konfirmasi = confirm(`Hapus tamu:\n"${guest.nama_lengkap}" (${guest.id})?\n\nData ini akan langsung dihapus dari Google Spreadsheet & daftar presensi.`);
             if (!konfirmasi) return;
 
-            if (!APPS_SCRIPT_URL) {
-                alert("Perhatian: Pasang URL Apps Script terlebih dahulu.");
-                return;
+            // 1. Catat ke cache blacklist lokal agar kartu tidak muncul kembali akibat delay cache CDN Google Sheets
+            addDeletedCache(guest.nama_lengkap, guest.category, guest.asal_majelis);
+
+            // 2. Bersihkan status kehadiran lokal & firebase
+            const attMap = getAttendanceMap();
+            if (attMap[guest.id]) {
+                delete attMap[guest.id];
+                localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(attMap));
+                if (isFirebaseActive) dbRef.ref(`attendance/${guest.id}`).remove();
             }
 
+            // 3. OPTIMISTIC UPDATE: Langsung hapus dari memori & perbarui antarmuka seketika (0 detik)
+            const targetIdx = allGuests.findIndex(g => g.id === guest.id);
+            if (targetIdx !== -1) {
+                const cat = guest.category;
+                allGuests.splice(targetIdx, 1);
+                
+                // Tambahkan slot kosong di baris akhir kategori agar kapasitas slot tetap utuh
+                const totalSlot = (cat === 'VIP') ? TOTAL_SLOT_VIP : TOTAL_SLOT_VVIP;
+                const newNomor = allGuests.filter(g => g.category === cat).length + 1;
+                allGuests.push({
+                    id: `${cat}-${newNomor}`,
+                    category: cat,
+                    nomor_tamu: newNomor,
+                    nama_lengkap: `[Slot Kosong #${newNomor}]`,
+                    nama_panggilan: '-',
+                    asal_majelis: '-',
+                    photo_url: '',
+                    is_empty: true,
+                    is_attended: false,
+                    attended_at: null
+                });
+
+                // Urutkan kembali nomor kursi untuk kategori yang bersangkutan
+                let currNo = 1;
+                allGuests.forEach(g => {
+                    if (g.category === cat) {
+                        g.nomor_tamu = currNo;
+                        g.id = `${cat}-${currNo}`;
+                        if (g.is_empty) g.nama_lengkap = `[Slot Kosong #${currNo}]`;
+                        currNo++;
+                    }
+                });
+            }
+
+            // Perbarui tampilan kartu dan angka statistik seketika
+            updateStats();
+            renderCards();
+
+            // 4. Kirim perintah penghapusan presisi ke Google Apps Script (Berdasarkan Nama & Majelis)
             try {
-                const attMap = getAttendanceMap();
-                if (attMap[guestId]) {
-                    delete attMap[guestId];
-                    localStorage.setItem('kehadiran_tamu_majelis', JSON.stringify(attMap));
-                    if (isFirebaseActive) dbRef.ref(`attendance/${guestId}`).remove();
-                }
-
-                const url = `${APPS_SCRIPT_URL}?action=delete&category=${category}&nomor=${nomor}&nama=${encodeURIComponent(guestName)}&_=${Date.now()}`;
+                const targetSheetId = (guest.category === 'VVIP') ? SHEET_ID_VVIP : SHEET_ID_VIP;
+                const url = `${APPS_SCRIPT_URL}?action=delete&category=${encodeURIComponent(guest.category)}&majelis=${encodeURIComponent(guest.asal_majelis)}&nama=${encodeURIComponent(guest.nama_lengkap)}&sheetId=${encodeURIComponent(targetSheetId)}&_=${Date.now()}`;
+                
                 await fetch(url, { mode: 'no-cors' });
-
-                alert(`Tamu "${guestName}" telah dihapus dari Google Spreadsheet!\nMenyinkronkan data...`);
-                setTimeout(() => { fetchOnlineSheets(); }, 1200);
+                // Re-fetch sheet di background untuk memastikan sinkronisasi sempurna
+                setTimeout(() => { fetchOnlineSheets(); }, 2000);
             } catch (err) {
-                alert("Gagal menghapus dari Spreadsheet: " + err.message);
+                console.error("Gagal mengirim perintah hapus ke Spreadsheet:", err);
             }
         }
 
         // =========================================================================
         // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET (ANTI-OFFSET & ANTI-SALAH DETEKSI)
         // =========================================================================
-        function fetchSheetDataJSONP(sheetId, sheetName, forcedMajelis = null) {
+        function fetchSheetDataJSONP(sheetId, sheetName, forcedMajelis = null, category = 'VIP') {
             return new Promise((resolve) => {
                 const callbackName = 'gviz_cb_' + Math.floor(Math.random() * 10000000);
                 const timeout = setTimeout(() => { resolve(null); }, 8000);
@@ -723,7 +818,6 @@
                         let idxPhoto = cols.findIndex(c => c.includes('photo') || c.includes('foto') || c.includes('wajah') || c.includes('selfie'));
 
                         let startRow = 0;
-                        // Jika label kolom kosong, cek baris pertama
                         if (idxNama === -1 && table.rows.length > 0) {
                             const firstRow = (table.rows[0].c || []).map(cell => cell ? (cell.v || '').toString().toLowerCase().trim() : '');
                             const rowIdxNama = firstRow.findIndex(c => c.includes('nama lengkap') || c.includes('nama tamu') || c.includes('nama'));
@@ -751,7 +845,6 @@
                             let majelisRaw = idxMajelis !== -1 ? getCell(idxMajelis).toUpperCase() : '';
                             let photoRaw = idxPhoto !== -1 ? getCell(idxPhoto) : '';
 
-                            // Deteksi dinamis berbasis tipe konten jika indeks header belum presisi
                             if (!nama || idxNama === -1) {
                                 for (let cIdx = 0; cIdx < row.c.length; cIdx++) {
                                     const val = getCell(cIdx);
@@ -771,6 +864,11 @@
                                 continue;
                             }
 
+                            // Lindungi dari delay cache CDN Google Sheets jika tamu ini baru saja dihapus di web
+                            if (isGuestDeletedInCache(nama, category)) {
+                                continue;
+                            }
+
                             let majelis = forcedMajelis;
                             if (!majelis) {
                                 if (majelisRaw.includes('MTNH')) {
@@ -778,7 +876,6 @@
                                 } else if (majelisRaw.includes('MTQL')) {
                                     majelis = 'MTQL';
                                 } else {
-                                    // Cek seluruh isi sel pada baris jika majelis belum ditemukan
                                     for (let cIdx = 0; cIdx < row.c.length; cIdx++) {
                                         const cVal = getCell(cIdx).toUpperCase();
                                         if (cVal.includes('MTNH')) { majelis = 'MTNH'; break; }
@@ -787,7 +884,7 @@
                                 }
                             }
 
-                            if (!majelis) continue; // Jangan masukkan baris sampah
+                            if (!majelis) continue;
 
                             results.push({
                                 nama_lengkap: nama,
@@ -828,47 +925,39 @@
             btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
             lucide.createIcons();
 
-            localStorage.removeItem('guest_overrides_majelis');
-
-            // 1. Ambil data VIP (Target: MTQL = 162, MTNH = 243 -> Total VIP = 405)
+            // 1. Ambil data VIP (MTQL & MTNH dari tab masing-masing secara independen)
             const [vipMTQL, vipMTNH] = await Promise.all([
-                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTQL', 'MTQL'),
-                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTNH', 'MTNH')
+                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTQL', 'MTQL', 'VIP'),
+                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTNH', 'MTNH', 'VIP')
             ]);
 
             let finalVIP = [];
-            if (vipMTQL && vipMTQL.length > 0 && vipMTNH && vipMTNH.length > 0) {
+            if (vipMTQL && vipMTNH) {
                 finalVIP = [...vipMTQL, ...vipMTNH];
             } else {
-                // Fallback VIP jika tab spesifik gagal
-                const fallbackVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null);
-                if (fallbackVIP) {
-                    finalVIP = fallbackVIP;
-                }
+                const fallbackVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP');
+                if (fallbackVIP) finalVIP = fallbackVIP;
             }
 
-            // 2. Ambil data VVIP (Target: MTQL = 22, MTNH = 25 -> Total VVIP = 47)
-            // Mengambil dari sheet tanggapan form utama yang menyimpan seluruh 47 tamu murni tanpa error formula
-            const vvipFormResponses = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null);
-            
+            // 2. Ambil data VVIP
+            const vvipFormResponses = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP');
             let finalVVIP = [];
-            if (vvipFormResponses && vvipFormResponses.length >= 47) {
+            if (vvipFormResponses && vvipFormResponses.length >= 40) {
                 const vvipMTQL = vvipFormResponses.filter(g => g.asal_majelis === 'MTQL');
                 const vvipMTNH = vvipFormResponses.filter(g => g.asal_majelis === 'MTNH');
                 finalVVIP = [...vvipMTQL, ...vvipMTNH];
             } else {
-                // Fallback mencoba membaca tab terpisah
                 const [tabVvipMTQL, tabVvipMTNH] = await Promise.all([
-                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTQL', 'MTQL'),
-                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTNH', 'MTNH')
+                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTQL', 'MTQL', 'VVIP'),
+                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTNH', 'MTNH', 'VVIP')
                 ]);
                 let combined = [];
-                if (tabVvipMTQL && tabVvipMTQL.length > 0) combined.push(...tabVvipMTQL);
-                if (tabVvipMTNH && tabVvipMTNH.length > 0) combined.push(...tabVvipMTNH);
+                if (tabVvipMTQL) combined.push(...tabVvipMTQL);
+                if (tabVvipMTNH) combined.push(...tabVvipMTNH);
 
-                if (combined.length >= 47) {
+                if (combined.length >= 40) {
                     finalVVIP = combined;
-                } else if (vvipFormResponses && vvipFormResponses.length > 0) {
+                } else if (vvipFormResponses) {
                     finalVVIP = vvipFormResponses;
                 }
             }
@@ -918,7 +1007,7 @@
                 }
             }
 
-            // Pemetaan Slot: VVIP (50 slot) & VIP (500 slot)
+            // Pemetaan Slot Presisi: VVIP (50 slot) & VIP (500 slot)
             mapCategoryData(finalVVIP, 'VVIP', TOTAL_SLOT_VVIP);
             mapCategoryData(finalVIP, 'VIP', TOTAL_SLOT_VIP);
 
@@ -1017,7 +1106,6 @@
                 const initials = g.nama_lengkap.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
                 const isVvip = g.category === 'VVIP';
                 const hasPhoto = Boolean(g.photo_url);
-                const safeName = g.nama_lengkap.replace(/'/g, "\\'");
 
                 if (g.is_empty) {
                     return `
@@ -1070,15 +1158,16 @@
                                 </div>
 
                                 <div class="flex items-center gap-1">
-                                    <button onclick="deleteGuestFromView('${g.id}', '${safeName}', ${g.nomor_tamu}, '${g.category}')" title="Hapus dari Google Spreadsheet" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition">
+                                    <!-- Tombol Hapus Aman (Bebas dari Bug Kutip Nama) -->
+                                    <button onclick="deleteGuestById('${g.id}')" title="Hapus dari Google Spreadsheet" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                     </button>
 
                                     ${g.is_attended ? 
-                                        `<button onclick="cancelAttendance('${g.id}', '${safeName}')" title="Batalkan status hadir" class="text-[10px] text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded font-bold transition flex items-center gap-0.5">
+                                        `<button onclick="cancelAttendanceById('${g.id}')" title="Batalkan status hadir" class="text-[10px] text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded font-bold transition flex items-center gap-0.5">
                                             <i data-lucide="undo-2" class="w-2.5 h-2.5"></i> Batal
                                         </button>` : 
-                                        `<button onclick="markAttendanceManual('${g.id}', '${safeName}')" title="Tandai hadir manual" class="text-[10px] text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 px-1.5 py-0.5 rounded font-medium transition">
+                                        `<button onclick="markAttendanceById('${g.id}')" title="Tandai hadir manual" class="text-[10px] text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 px-1.5 py-0.5 rounded font-medium transition">
                                             + Hadirkan
                                         </button>`
                                     }
@@ -1246,7 +1335,7 @@
             });
         }
 
-        // Jalankan aplikasi langsung dari Google Sheets
+        // Jalankan sinkronisasi awal dari Google Sheets
         fetchOnlineSheets();
     </script>
 </body>
