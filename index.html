@@ -70,7 +70,7 @@
 
         <!-- Dashboard Ringkasan Statistik (Tepat 4 Tab Presisi & Simetris) -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-            <!-- 1. Total Terdata (Klik untuk Membuka Modal Rekap Kategori & Majelis) -->
+            <!-- 1. Total Terdata -->
             <div onclick="openRekapModal()" class="group bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-500 hover:shadow-md transition select-none flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between">
@@ -281,7 +281,7 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP TAMBAH TAMU MANUAL (ANTI DUPLIKAT KURSI) -->
+    <!-- MODAL POPUP TAMBAH TAMU MANUAL -->
     <div id="add-guest-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 text-left shadow-2xl relative border border-slate-100">
             <button onclick="closeAddGuestModal()" class="absolute right-5 top-5 text-slate-400 hover:text-slate-600">
@@ -348,20 +348,23 @@
         </div>
     </div>
 
-    <!-- Modal Scanner Kamera HP Panitia (Layer z-50) -->
+    <!-- Modal Scanner Kamera HP Panitia -->
     <div id="scanner-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-center shadow-2xl relative">
             <button onclick="closeScanner()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
-            <h3 class="text-sm font-black text-slate-800 mb-1">Arahkan Kamera ke Kartu Tamu</h3>
-            <p class="text-[11px] text-slate-500 mb-3">Sistem otomatis mencocokkan wajah & data kehadiran</p>
+            <h3 class="text-sm font-black text-slate-800 mb-1 flex items-center justify-center gap-1.5">
+                <i data-lucide="scan" class="w-4 h-4 text-emerald-600"></i>
+                <span>Arahkan Kamera ke Kartu Tamu</span>
+            </h3>
+            <p class="text-[11px] text-slate-500 mb-3">Bunyi otomatis 1x saat QR terdeteksi</p>
             
             <div id="camera-reader-box" class="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black min-h-[240px]"></div>
 
             <div class="mt-4 flex gap-2">
                 <input type="text" id="manual-code-input" placeholder="Input manual (cth: VIP-1)" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
-                <button onclick="submitScan(document.getElementById('manual-code-input').value)" class="bg-emerald-800 text-white text-xs px-4 rounded-xl font-bold">Kirim</button>
+                <button onclick="submitScan(document.getElementById('manual-code-input').value)" class="bg-emerald-800 text-white text-xs px-4 rounded-xl font-bold hover:bg-emerald-700 transition">Kirim</button>
             </div>
         </div>
     </div>
@@ -374,7 +377,7 @@
                 <span id="res-msg">Presensi Terverifikasi</span>
             </div>
 
-            <!-- Wadah Foto: Bisa Diketuk untuk Menampilkan Foto Asli Penuh di Modal Fullscreen -->
+            <!-- Wadah Foto -->
             <div class="relative w-36 h-36 mx-auto mb-3 cursor-pointer group" onclick="openFullPhoto()" title="Ketuk untuk melihat foto penuh">
                 <img id="res-photo" src="" alt="Foto Tamu" referrerpolicy="no-referrer" class="w-36 h-36 rounded-full object-cover object-top border-4 border-emerald-500 shadow-xl mx-auto transition-transform group-hover:scale-105 active:scale-95">
                 <div id="res-avatar" class="w-36 h-36 rounded-full bg-slate-800 text-white text-4xl font-black flex items-center justify-center border-4 border-white shadow-xl mx-auto hidden">
@@ -398,7 +401,7 @@
 
             <p id="res-time" class="text-[11px] text-slate-400 font-mono mt-3">Waktu Scan: -</p>
 
-            <!-- Tombol Lanjut: Menutup hasil dan tetap di scanner kamera -->
+            <!-- Tombol Lanjut -->
             <button onclick="closeResultModal()" class="w-full mt-5 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-lg flex items-center justify-center gap-1.5">
                 <i data-lucide="scan-line" class="w-4 h-4 text-emerald-400"></i>
                 <span>Tutup & Lanjut Scan Berikutnya</span>
@@ -412,7 +415,7 @@
         </div>
     </div>
 
-    <!-- MODAL FOTO FULL SCREEN (Layer z-[70] di atas Hasil Scan) -->
+    <!-- MODAL FOTO FULL SCREEN -->
     <div id="fullphoto-modal" onclick="closeFullPhoto()" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex flex-col items-center justify-center p-4 hidden select-none transition-opacity duration-200">
         <button onclick="closeFullPhoto()" class="absolute top-5 right-5 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-2 rounded-full transition shadow-lg z-10 flex items-center gap-1.5 text-xs font-bold border border-white/20">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -431,15 +434,13 @@
     <!-- Script Logika Aplikasi -->
     <script>
         // =========================================================================
-        // KONFIGURASI DATABASE & APPS SCRIPT DEPLOY TERBARU
+        // KONFIGURASI DATABASE & APPS SCRIPT DEPLOY
         // =========================================================================
         const SHEET_ID_VIP = "1-jgBw-gWk-451E_1mCoeqYjV6-2d-N_90efBnDUwSK4";
         const SHEET_ID_VVIP = "1R9tuXxyrY7lH90j2LivV-v1zrdhgwtKRSQOxMq-RIx8";
 
-        // Link Deploy terbaru yang Anda kirimkan
         const APPS_SCRIPT_DEPLOY_RAW = "https://script.google.com/macros/library/d/1ETHLqYKZVM3MYf6lbZt6u2tc2j8TkMsoftC_lxknw7bynniC-Rspyqh1/6";
 
-        // Normalisasi URL otomatis: mengonversi link library ke endpoint eksekusi Web App (/exec)
         function getAppsScriptEndpoint() {
             const raw = APPS_SCRIPT_DEPLOY_RAW.trim();
             if (raw.includes('/macros/library/d/')) {
@@ -475,7 +476,80 @@
         let currentTab = 'all';
         let qrScanner = null;
         let activeScannedGuest = null;
-        let isScanningPaused = false;
+
+        // =========================================================================
+        // PENGATUR SUARA 1X (SINGLE CRISP BEEP) & KONTROL ANTI-SPAM
+        // =========================================================================
+        let audioCtx = null;
+        let isProcessingScan = false;         // Kunci aktif saat satu QR sedang diproses
+        let lastScannedCode = null;           // Menyimpan ID QR terakhir agar tidak berulang
+        let lastScannedTimestamp = 0;         // Waktu scan terakhir (cooldown 4 detik untuk QR yang sama)
+
+        function initAudioContext() {
+            try {
+                if (!audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        audioCtx = new AudioContextClass();
+                    }
+                }
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (err) {
+                console.warn("AudioContext init error:", err);
+            }
+        }
+
+        // Membunyikan suara scan tepat 1 kali saja tanpa dengung berulang
+        function playSingleScanBeep(isValid = true) {
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                if (isValid) {
+                    // Frekuensi 2350 Hz: Karakter suara khas alat scanner optik barcode kasir/tiket
+                    // Durasi 80 milidetik (0.08 detik): Bersih, tegas, sekali bunyi
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(2350, now);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.4, now + 0.006); // Attack cepat (menghilangkan audio pop)
+                    gain.gain.setValueAtTime(0.4, now + 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08); // Decay lembut
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+
+                    if (navigator.vibrate) navigator.vibrate(80);
+                } else {
+                    // Nada peringatan jika kode tidak terdaftar / kursi kosong: 1x nada rendah (300 Hz)
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+
+                    if (navigator.vibrate) navigator.vibrate(180);
+                }
+            } catch (err) {
+                console.warn("Gagal memainkan suara scan:", err);
+            }
+        }
 
         // =========================================================================
         // CACHE SINKRONISASI HAPUS (ANTI-GHOSTING & ANTI-CACHE DELAY GOOGLE CDN)
@@ -484,7 +558,6 @@
             try {
                 const list = JSON.parse(localStorage.getItem('deleted_guests_cache')) || [];
                 const now = Date.now();
-                // Simpan cache proteksi selama 30 menit (mengatasi cache CDN Google)
                 return list.filter(item => (now - (item.ts || 0)) < 1800000);
             } catch(e) {
                 return [];
@@ -596,6 +669,7 @@
             const { time } = markGuestAttended(guest.id);
             guest.is_attended = true;
             guest.attended_at = time;
+            playSingleScanBeep(true);
             updateStats();
             renderCards();
         }
@@ -708,7 +782,6 @@
                 
                 await fetch(url, { mode: 'no-cors' });
 
-                // Bersihkan dari cache blacklist jika nama ini pernah dihapus sebelumnya
                 const dCache = getDeletedCache().filter(d => d.nama !== namaLengkap.toLowerCase());
                 localStorage.setItem('deleted_guests_cache', JSON.stringify(dCache));
 
@@ -731,10 +804,8 @@
             const konfirmasi = confirm(`Hapus tamu:\n"${guest.nama_lengkap}" (${guest.id})?\n\nData ini akan langsung dihapus dari Google Spreadsheet & daftar presensi.`);
             if (!konfirmasi) return;
 
-            // 1. Catat ke cache blacklist lokal agar kartu tidak muncul kembali akibat delay cache CDN Google Sheets
             addDeletedCache(guest.nama_lengkap, guest.category, guest.asal_majelis);
 
-            // 2. Bersihkan status kehadiran lokal & firebase
             const attMap = getAttendanceMap();
             if (attMap[guest.id]) {
                 delete attMap[guest.id];
@@ -742,14 +813,11 @@
                 if (isFirebaseActive) dbRef.ref(`attendance/${guest.id}`).remove();
             }
 
-            // 3. OPTIMISTIC UPDATE: Langsung hapus dari memori & perbarui antarmuka seketika (0 detik)
             const targetIdx = allGuests.findIndex(g => g.id === guest.id);
             if (targetIdx !== -1) {
                 const cat = guest.category;
                 allGuests.splice(targetIdx, 1);
                 
-                // Tambahkan slot kosong di baris akhir kategori agar kapasitas slot tetap utuh
-                const totalSlot = (cat === 'VIP') ? TOTAL_SLOT_VIP : TOTAL_SLOT_VVIP;
                 const newNomor = allGuests.filter(g => g.category === cat).length + 1;
                 allGuests.push({
                     id: `${cat}-${newNomor}`,
@@ -764,7 +832,6 @@
                     attended_at: null
                 });
 
-                // Urutkan kembali nomor kursi untuk kategori yang bersangkutan
                 let currNo = 1;
                 allGuests.forEach(g => {
                     if (g.category === cat) {
@@ -776,17 +843,14 @@
                 });
             }
 
-            // Perbarui tampilan kartu dan angka statistik seketika
             updateStats();
             renderCards();
 
-            // 4. Kirim perintah penghapusan presisi ke Google Apps Script (Berdasarkan Nama & Majelis)
             try {
                 const targetSheetId = (guest.category === 'VVIP') ? SHEET_ID_VVIP : SHEET_ID_VIP;
                 const url = `${APPS_SCRIPT_URL}?action=delete&category=${encodeURIComponent(guest.category)}&majelis=${encodeURIComponent(guest.asal_majelis)}&nama=${encodeURIComponent(guest.nama_lengkap)}&sheetId=${encodeURIComponent(targetSheetId)}&_=${Date.now()}`;
                 
                 await fetch(url, { mode: 'no-cors' });
-                // Re-fetch sheet di background untuk memastikan sinkronisasi sempurna
                 setTimeout(() => { fetchOnlineSheets(); }, 2000);
             } catch (err) {
                 console.error("Gagal mengirim perintah hapus ke Spreadsheet:", err);
@@ -794,7 +858,7 @@
         }
 
         // =========================================================================
-        // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET (ANTI-OFFSET & ANTI-SALAH DETEKSI)
+        // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET
         // =========================================================================
         function fetchSheetDataJSONP(sheetId, sheetName, forcedMajelis = null, category = 'VIP') {
             return new Promise((resolve) => {
@@ -864,7 +928,6 @@
                                 continue;
                             }
 
-                            // Lindungi dari delay cache CDN Google Sheets jika tamu ini baru saja dihapus di web
                             if (isGuestDeletedInCache(nama, category)) {
                                 continue;
                             }
@@ -925,7 +988,7 @@
             btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
             lucide.createIcons();
 
-            // 1. Ambil data VIP (MTQL & MTNH dari tab masing-masing secara independen)
+            // 1. Ambil data VIP (MTQL & MTNH)
             const [vipMTQL, vipMTNH] = await Promise.all([
                 fetchSheetDataJSONP(SHEET_ID_VIP, 'MTQL', 'MTQL', 'VIP'),
                 fetchSheetDataJSONP(SHEET_ID_VIP, 'MTNH', 'MTNH', 'VIP')
@@ -1007,7 +1070,6 @@
                 }
             }
 
-            // Pemetaan Slot Presisi: VVIP (50 slot) & VIP (500 slot)
             mapCategoryData(finalVVIP, 'VVIP', TOTAL_SLOT_VVIP);
             mapCategoryData(finalVIP, 'VIP', TOTAL_SLOT_VIP);
 
@@ -1158,7 +1220,6 @@
                                 </div>
 
                                 <div class="flex items-center gap-1">
-                                    <!-- Tombol Hapus Aman (Bebas dari Bug Kutip Nama) -->
                                     <button onclick="deleteGuestById('${g.id}')" title="Hapus dari Google Spreadsheet" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-100 transition">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                     </button>
@@ -1182,21 +1243,38 @@
             lucide.createIcons();
         }
 
-        // ==========================================
-        // SCANNER KAMERA REAL-TIME
-        // ==========================================
+        // =========================================================================
+        // SCANNER KAMERA (ANTI-SPAM: BUNYI SEKALI & DIBEKUKAN SAAT TERDETEKSI)
+        // =========================================================================
         function openScanner() {
+            initAudioContext();
             document.getElementById('scanner-modal').classList.remove('hidden');
-            isScanningPaused = false;
+            isProcessingScan = false;
+
             if (qrScanner) return;
             
             qrScanner = new Html5Qrcode("camera-reader-box");
             qrScanner.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 220, height: 220 } },
+                { fps: 15, qrbox: { width: 220, height: 220 } },
                 (decodedText) => {
-                    if (isScanningPaused) return;
-                    isScanningPaused = true;
+                    const now = Date.now();
+                    // Jika sedang memproses atau kamera masih menghadap kartu yang sama dalam kurun 4 detik -> ABAIKAN
+                    if (isProcessingScan) return;
+                    if (decodedText === lastScannedCode && (now - lastScannedTimestamp < 4000)) {
+                        return;
+                    }
+
+                    // Kunci proses seketika
+                    isProcessingScan = true;
+                    lastScannedCode = decodedText;
+                    lastScannedTimestamp = now;
+
+                    // Bekukan scanner kamera agar tidak terus memindai frame di background
+                    if (qrScanner) {
+                        try { qrScanner.pause(true); } catch(e) {}
+                    }
+
                     submitScan(decodedText);
                 },
                 () => {}
@@ -1208,32 +1286,55 @@
 
         function closeScanner() {
             document.getElementById('scanner-modal').classList.add('hidden');
-            isScanningPaused = false;
+            isProcessingScan = false;
+            lastScannedCode = null;
+
             if (qrScanner) {
                 qrScanner.stop().then(() => {
                     qrScanner.clear();
                     qrScanner = null;
-                }).catch(err => console.error(err));
+                }).catch(err => {
+                    console.error(err);
+                    qrScanner = null;
+                });
             }
         }
 
         function submitScan(rawCode) {
             if (!rawCode) return;
+            initAudioContext();
+
             const guestId = rawCode.split('/').pop().trim().toUpperCase();
             const guest = allGuests.find(g => g.id.toUpperCase() === guestId);
 
+            // Jika QR Code tidak terdaftar / kursi kosong
             if (!guest || guest.is_empty) {
+                playSingleScanBeep(false); // 1x nada rendah peringatan
                 alert(`QR Code (${rawCode}) belum terdaftar / masih kursi kosong di Spreadsheet!`);
-                setTimeout(() => { isScanningPaused = false; }, 1200);
+                
+                // Buka kembali scanner jika masih di modal scanner
+                if (qrScanner) {
+                    try { qrScanner.resume(); } catch(e) {}
+                }
+                setTimeout(() => {
+                    isProcessingScan = false;
+                }, 1200);
                 return;
             }
+
+            // Bunyi 1x BEEP TEGAS & JERNIH
+            playSingleScanBeep(true);
 
             activeScannedGuest = guest;
             const { isFirst, time } = markGuestAttended(guest.id);
             guest.is_attended = true;
             guest.attended_at = time;
 
-            showResultModal(guest, isFirst ? 'success' : 'warning', isFirst ? 'VALID: Presensi Berhasil Dicatat!' : `PERHATIAN: Tamu ini SUDAH PERNAH SCAN pada ${time}`);
+            showResultModal(
+                guest, 
+                isFirst ? 'success' : 'warning', 
+                isFirst ? 'VALID: Presensi Berhasil Dicatat!' : `PERHATIAN: Tamu ini SUDAH PERNAH SCAN pada ${time}`
+            );
             updateStats();
             renderCards();
         }
@@ -1282,9 +1383,15 @@
             document.getElementById('result-modal').classList.add('hidden');
             activeScannedGuest = null;
 
+            // Aktifkan kembali kamera pemindai
+            if (qrScanner) {
+                try { qrScanner.resume(); } catch(e) {}
+            }
+
+            // Buka kunci pemrosesan dengan jeda aman 500ms
             setTimeout(() => {
-                isScanningPaused = false;
-            }, 1000);
+                isProcessingScan = false;
+            }, 500);
         }
 
         // ==========================================
