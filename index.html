@@ -947,7 +947,10 @@
                                 }
                             }
 
-                            if (!majelis) continue;
+                            // Jika majelis kosong atau formatnya beda, gunakan majelisRaw atau tanda hubung agar tidak menghapus baris sah
+                            if (!majelis) {
+                                majelis = majelisRaw || '-';
+                            }
 
                             results.push({
                                 nama_lengkap: nama,
@@ -988,19 +991,14 @@
             btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
             lucide.createIcons();
 
-            // 1. Ambil data VIP (MTQL & MTNH)
-            const [vipMTQL, vipMTNH] = await Promise.all([
-                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTQL', 'MTQL', 'VIP'),
-                fetchSheetDataJSONP(SHEET_ID_VIP, 'MTNH', 'MTNH', 'VIP')
-            ]);
-
-            let finalVIP = [];
-            if (vipMTQL && vipMTNH) {
-                finalVIP = [...vipMTQL, ...vipMTNH];
-            } else {
-                const fallbackVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP');
-                if (fallbackVIP) finalVIP = fallbackVIP;
+            // 1. Ambil data VIP langsung berurutan dari sheet Form Responses 2 (sesuai urutan baris di Google Spreadsheet)
+            // Dimulai dari Siti Rohayati (Neneng) sebagai tamu urutan #1 hingga baris terakhir
+            let finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, 'Form Responses 2', null, 'VIP');
+            if (!finalVIP || finalVIP.length === 0) {
+                // Fallback otomatis ke sheet utama pertama jika nama tab berbeda
+                finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP');
             }
+            if (!finalVIP) finalVIP = [];
 
             // 2. Ambil data VVIP
             const vvipFormResponses = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP');
