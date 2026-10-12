@@ -947,7 +947,6 @@
                                 }
                             }
 
-                            // Jika majelis kosong atau formatnya beda, gunakan majelisRaw atau tanda hubung agar tidak menghapus baris sah
                             if (!majelis) {
                                 majelis = majelisRaw || '-';
                             }
@@ -992,10 +991,8 @@
             lucide.createIcons();
 
             // 1. Ambil data VIP langsung berurutan dari sheet Form Responses 2 (sesuai urutan baris di Google Spreadsheet)
-            // Dimulai dari Siti Rohayati (Neneng) sebagai tamu urutan #1 hingga baris terakhir
             let finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, 'Form Responses 2', null, 'VIP');
             if (!finalVIP || finalVIP.length === 0) {
-                // Fallback otomatis ke sheet utama pertama jika nama tab berbeda
                 finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP');
             }
             if (!finalVIP) finalVIP = [];
@@ -1214,7 +1211,7 @@
                                 <div class="flex items-center gap-2">
                                     <span>Nomor: <b>#${g.nomor_tamu}</b></span>
                                     <span>•</span>
-                                    <span class="px-1.5 py-0.2 rounded ${g.asal_majelis === 'MTNH' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'} font-bold">${g.asal_majelis}</span>
+                                    <span class="px-1.5 py-0.2 rounded ${g.asal_majelis === 'MTQL' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'} font-bold">${g.asal_majelis}</span>
                                 </div>
 
                                 <div class="flex items-center gap-1">
@@ -1257,18 +1254,15 @@
                 { fps: 15, qrbox: { width: 220, height: 220 } },
                 (decodedText) => {
                     const now = Date.now();
-                    // Jika sedang memproses atau kamera masih menghadap kartu yang sama dalam kurun 4 detik -> ABAIKAN
                     if (isProcessingScan) return;
                     if (decodedText === lastScannedCode && (now - lastScannedTimestamp < 4000)) {
                         return;
                     }
 
-                    // Kunci proses seketika
                     isProcessingScan = true;
                     lastScannedCode = decodedText;
                     lastScannedTimestamp = now;
 
-                    // Bekukan scanner kamera agar tidak terus memindai frame di background
                     if (qrScanner) {
                         try { qrScanner.pause(true); } catch(e) {}
                     }
@@ -1305,12 +1299,10 @@
             const guestId = rawCode.split('/').pop().trim().toUpperCase();
             const guest = allGuests.find(g => g.id.toUpperCase() === guestId);
 
-            // Jika QR Code tidak terdaftar / kursi kosong
             if (!guest || guest.is_empty) {
-                playSingleScanBeep(false); // 1x nada rendah peringatan
+                playSingleScanBeep(false);
                 alert(`QR Code (${rawCode}) belum terdaftar / masih kursi kosong di Spreadsheet!`);
                 
-                // Buka kembali scanner jika masih di modal scanner
                 if (qrScanner) {
                     try { qrScanner.resume(); } catch(e) {}
                 }
@@ -1320,7 +1312,6 @@
                 return;
             }
 
-            // Bunyi 1x BEEP TEGAS & JERNIH
             playSingleScanBeep(true);
 
             activeScannedGuest = guest;
@@ -1344,6 +1335,7 @@
             const msg = document.getElementById('res-msg');
             const photo = document.getElementById('res-photo');
             const avatar = document.getElementById('res-avatar');
+            const resMaj = document.getElementById('res-maj');
 
             msg.innerText = message;
             if (status === 'success') {
@@ -1356,7 +1348,15 @@
             document.getElementById('res-nama-panggilan').innerText = `Panggilan: ${guest.nama_panggilan}`;
             document.getElementById('res-no').innerText = `Nomor: #${guest.nomor_tamu}`;
             document.getElementById('res-cat').innerText = guest.category;
-            document.getElementById('res-maj').innerText = guest.asal_majelis;
+            
+            // Sinkronkan badge majelis di modal hasil scan: MTQL hijau, MTNH biru
+            resMaj.innerText = guest.asal_majelis;
+            if (guest.asal_majelis === 'MTQL') {
+                resMaj.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-900";
+            } else {
+                resMaj.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-900";
+            }
+
             document.getElementById('res-time').innerText = `Waktu Scan: ${guest.attended_at}`;
 
             if (guest.photo_url) {
@@ -1381,12 +1381,10 @@
             document.getElementById('result-modal').classList.add('hidden');
             activeScannedGuest = null;
 
-            // Aktifkan kembali kamera pemindai
             if (qrScanner) {
                 try { qrScanner.resume(); } catch(e) {}
             }
 
-            // Buka kunci pemrosesan dengan jeda aman 500ms
             setTimeout(() => {
                 isProcessingScan = false;
             }, 500);
