@@ -997,28 +997,12 @@
             }
             if (!finalVIP) finalVIP = [];
 
-            // 2. Ambil data VVIP
-            const vvipFormResponses = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP');
-            let finalVVIP = [];
-            if (vvipFormResponses && vvipFormResponses.length >= 40) {
-                const vvipMTQL = vvipFormResponses.filter(g => g.asal_majelis === 'MTQL');
-                const vvipMTNH = vvipFormResponses.filter(g => g.asal_majelis === 'MTNH');
-                finalVVIP = [...vvipMTQL, ...vvipMTNH];
-            } else {
-                const [tabVvipMTQL, tabVvipMTNH] = await Promise.all([
-                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTQL', 'MTQL', 'VVIP'),
-                    fetchSheetDataJSONP(SHEET_ID_VVIP, 'MTNH', 'MTNH', 'VVIP')
-                ]);
-                let combined = [];
-                if (tabVvipMTQL) combined.push(...tabVvipMTQL);
-                if (tabVvipMTNH) combined.push(...tabVvipMTNH);
-
-                if (combined.length >= 40) {
-                    finalVVIP = combined;
-                } else if (vvipFormResponses) {
-                    finalVVIP = vvipFormResponses;
-                }
+            // 2. Ambil data VVIP langsung berurutan dari sheet Form Responses 1 (sesuai urutan baris di Google Spreadsheet)
+            let finalVVIP = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP');
+            if (!finalVVIP || finalVVIP.length === 0) {
+                finalVVIP = await fetchSheetDataJSONP(SHEET_ID_VVIP, null, null, 'VVIP');
             }
+            if (!finalVVIP) finalVVIP = [];
 
             btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Refresh Sheets</span>`;
             lucide.createIcons();
