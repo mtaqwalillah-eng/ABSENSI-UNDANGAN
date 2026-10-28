@@ -35,7 +35,7 @@
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     <span>+ Tambah Tamu</span>
                 </button>
-                <button onclick="fetchOnlineSheets()" id="btn-refresh" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/20 transition">
+                <button onclick="fetchOnlineSheets(true)" id="btn-refresh" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold border border-white/20 transition">
                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                     <span class="hidden sm:inline">Refresh Sheets</span>
                 </button>
@@ -146,7 +146,7 @@
 
             <!-- Search Bar Cepat -->
             <div class="ml-auto w-full sm:w-64 mt-2 sm:mt-0 relative">
-                <input type="text" id="input-search" oninput="renderCards()" placeholder="Cari nama / no. kursi..." class="w-full text-xs py-2 pl-8 pr-3 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                <input type="text" id="input-search" oninput="renderCards()" placeholder="Cari nama / panggilan / no. kursi..." class="w-full text-xs py-2 pl-8 pr-3 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
                 <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
             </div>
         </div>
@@ -363,7 +363,7 @@
             <div id="camera-reader-box" class="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black min-h-[240px]"></div>
 
             <div class="mt-4 flex gap-2">
-                <input type="text" id="manual-code-input" placeholder="Input manual (cth: VIP-1)" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
+                <input type="text" id="manual-code-input" placeholder="Input manual (cth: VIP-504)" class="w-full text-xs p-2.5 border border-slate-300 rounded-xl outline-none">
                 <button onclick="submitScan(document.getElementById('manual-code-input').value)" class="bg-emerald-800 text-white text-xs px-4 rounded-xl font-bold hover:bg-emerald-700 transition">Kirim</button>
             </div>
         </div>
@@ -769,7 +769,7 @@
 
                 closeAddGuestModal();
                 alert(`Tamu "${namaLengkap}" berhasil ditambahkan ke Google Spreadsheet!\nMenyinkronkan data terbaru...`);
-                setTimeout(() => { fetchOnlineSheets(); }, 1200);
+                setTimeout(() => { fetchOnlineSheets(true); }, 1200);
             } catch (err) {
                 alert("Gagal menghubungi Google Apps Script: " + err.message);
             } finally {
@@ -844,7 +844,7 @@
         }
 
         // =========================================================================
-        // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET
+        // PARSER DATA CERDAS DARI GOOGLE SPREADSHEET (PRESISI SESUAI BARIS SPREADSHEET)
         // =========================================================================
         function fetchSheetDataJSONP(sheetId, sheetName, forcedMajelis = null, category = 'VIP') {
             return new Promise((resolve) => {
@@ -880,10 +880,16 @@
                             }
                         }
 
-                        const results = [];
+                        // Ekstrak seluruh baris apa adanya terlebih dahulu untuk menjaga presisi urutan baris (Baris Spreadsheet - 1)
+                        const rawParsed = [];
+                        let lastNonEmptyIndex = -1;
+
                         for (let r = startRow; r < table.rows.length; r++) {
                             const row = table.rows[r];
-                            if (!row || !row.c) continue;
+                            if (!row || !row.c) {
+                                rawParsed.push(null);
+                                continue;
+                            }
 
                             const getCell = (idx) => {
                                 if (idx < 0 || idx >= row.c.length || !row.c[idx]) return '';
@@ -904,17 +910,15 @@
                                         if (!majelisRaw) majelisRaw = upper;
                                     } else if (val.startsWith('http')) {
                                         if (!photoRaw) photoRaw = val;
-                                    } else if (!/^\d+$/.test(val) && val.length > 2 && !nama) {
+                                    } else if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(val) && !/^\+?\d[\d\s-]{6,}$/.test(val) && val.length >= 2 && !nama) {
                                         nama = val;
                                     }
                                 }
                             }
 
-                            if (!nama || nama.toLowerCase() === 'nan' || nama.toLowerCase() === 'nama lengkap' || nama.toLowerCase() === 'nama tamu') {
-                                continue;
-                            }
-
-                            if (isGuestDeletedInCache(nama, category)) {
+                            const lowerNama = (nama || '').toLowerCase();
+                            if (!nama || lowerNama === 'nan' || lowerNama === 'nama lengkap' || lowerNama === 'nama tamu' || isGuestDeletedInCache(nama, category)) {
+                                rawParsed.push(null);
                                 continue;
                             }
 
@@ -937,13 +941,18 @@
                                 majelis = majelisRaw || '-';
                             }
 
-                            results.push({
+                            rawParsed.push({
                                 nama_lengkap: nama,
                                 nama_panggilan: panggilan || '-',
                                 asal_majelis: majelis,
                                 photo_url: convertDriveUrl(photoRaw)
                             });
+                            lastNonEmptyIndex = rawParsed.length - 1;
                         }
+
+                        // Potong hanya baris kosong di bagian paling bawah (trailing empty rows),
+                        // sehingga nomor kursi tetap 100% sinkron dengan (Nomor Baris Spreadsheet - 1)
+                        const results = lastNonEmptyIndex >= 0 ? rawParsed.slice(0, lastNonEmptyIndex + 1) : [];
                         resolve(results);
                     } catch (e) {
                         resolve(null);
@@ -971,24 +980,38 @@
             });
         }
 
-        async function fetchOnlineSheets() {
+        async function fetchOnlineSheets(clearCache = false) {
+            if (clearCache) {
+                localStorage.removeItem('deleted_guests_cache');
+            }
+
             const btn = document.getElementById('btn-refresh');
             btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Menyinkronkan...`;
             lucide.createIcons();
 
-            // 1. Ambil seluruh data VIP dari sheet Form Responses 2
-            let finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, 'Form Responses 2', null, 'VIP');
-            if (!finalVIP || finalVIP.length === 0) {
-                finalVIP = await fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP');
+            // 1. Ambil seluruh data VIP (cek Form Responses 2 dan default sheet, pilih yang datanya paling lengkap)
+            const [vipSheet2, vipDefault] = await Promise.all([
+                fetchSheetDataJSONP(SHEET_ID_VIP, 'Form Responses 2', null, 'VIP'),
+                fetchSheetDataJSONP(SHEET_ID_VIP, null, null, 'VIP')
+            ]);
+            let finalVIP = [];
+            if (vipSheet2 && vipDefault) {
+                finalVIP = vipSheet2.length >= vipDefault.length ? vipSheet2 : vipDefault;
+            } else {
+                finalVIP = vipSheet2 || vipDefault || [];
             }
-            if (!finalVIP) finalVIP = [];
 
-            // 2. Ambil seluruh data VVIP dari sheet Form Responses 1
-            let finalVVIP = await fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP');
-            if (!finalVVIP || finalVVIP.length === 0) {
-                finalVVIP = await fetchSheetDataJSONP(SHEET_ID_VVIP, null, null, 'VVIP');
+            // 2. Ambil seluruh data VVIP
+            const [vvipSheet1, vvipDefault] = await Promise.all([
+                fetchSheetDataJSONP(SHEET_ID_VVIP, 'Form Responses 1', null, 'VVIP'),
+                fetchSheetDataJSONP(SHEET_ID_VVIP, null, null, 'VVIP')
+            ]);
+            let finalVVIP = [];
+            if (vvipSheet1 && vvipDefault) {
+                finalVVIP = vvipSheet1.length >= vvipDefault.length ? vvipSheet1 : vvipDefault;
+            } else {
+                finalVVIP = vvipSheet1 || vvipDefault || [];
             }
-            if (!finalVVIP) finalVVIP = [];
 
             btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Refresh Sheets</span>`;
             lucide.createIcons();
@@ -996,18 +1019,17 @@
             const attendance = getAttendanceMap();
             allGuests = [];
 
-            // Kapasitas otomatis menyesuaikan apabila jumlah baris di Spreadsheet melebihi batas minimum (500 VIP / 50 VVIP)
             function mapCategoryData(sheetRows, category, minSlots) {
                 const rows = sheetRows || [];
-                const filledCount = rows.length;
-                const totalSlots = Math.max(minSlots, filledCount);
+                const totalRowSlots = rows.length;
+                const totalSlots = Math.max(minSlots, totalRowSlots);
 
                 for (let i = 1; i <= totalSlots; i++) {
                     const guestId = `${category}-${i}`;
                     const attendedTime = attendance[guestId] || null;
+                    const item = (i <= totalRowSlots) ? rows[i - 1] : null;
 
-                    if (i <= filledCount) {
-                        const item = rows[i - 1];
+                    if (item && item.nama_lengkap) {
                         allGuests.push({
                             id: guestId,
                             category: category,
@@ -1072,7 +1094,6 @@
             document.getElementById('stat-mtnh').innerText = `MTNH: ${totMTNH}`;
             document.getElementById('stat-mtql').innerText = `MTQL: ${totMTQL}`;
 
-            // Perbarui label slot dinamis pada tombol CSV & pilihan filter
             const btnCsvVip = document.getElementById('btn-csv-vip');
             const btnCsvVvip = document.getElementById('btn-csv-vvip');
             const csvDesc = document.getElementById('csv-desc-text');
@@ -1111,12 +1132,12 @@
         }
 
         // ==========================================
-        // RENDER KARTU
+        // RENDER KARTU & PENCARIAN FLEKSIBEL
         // ==========================================
         function renderCards() {
             const container = document.getElementById('cards-container');
             const emptyState = document.getElementById('empty-state');
-            const search = document.getElementById('input-search').value.toLowerCase().trim();
+            const rawSearch = document.getElementById('input-search').value.toLowerCase().trim();
             const hideEmpty = document.getElementById('chk-hide-empty').checked;
             const filterCat = document.getElementById('filter-cat').value;
             const filterMaj = document.getElementById('filter-maj').value;
@@ -1134,13 +1155,17 @@
                 if (filterMaj) filtered = filtered.filter(g => g.asal_majelis === filterMaj);
             }
 
-            if (search) {
-                filtered = filtered.filter(g => 
-                    g.nama_lengkap.toLowerCase().includes(search) ||
-                    g.nama_panggilan.toLowerCase().includes(search) ||
-                    g.id.toLowerCase().includes(search) ||
-                    g.nomor_tamu.toString() === search
-                );
+            if (rawSearch) {
+                const cleanNum = rawSearch.replace(/^#/, '');
+                const keywords = rawSearch.split(/\s+/).filter(Boolean);
+
+                filtered = filtered.filter(g => {
+                    const combinedText = `${g.nama_lengkap} ${g.nama_panggilan} ${g.id} #${g.nomor_tamu} ${g.asal_majelis}`.toLowerCase();
+                    if (g.nomor_tamu.toString() === cleanNum || g.id.toLowerCase() === cleanNum) {
+                        return true;
+                    }
+                    return keywords.every(kw => combinedText.includes(kw));
+                });
             }
 
             if (filtered.length === 0) {
